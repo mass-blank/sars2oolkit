@@ -142,8 +142,9 @@ if args.infile:
                     sam_tools_sort(accession)
                     sam_tools_index(accession)
 
-                elif my_fastq_file.is_file() and my_fastq_2_file.is_file() and my_sam_file.is_file():
-                    print("files exist")
+                elif my_fastq_file.is_file() and my_sam_file.is_file() or my_fastq_2_file.is_file() and my_sam_file.is_file():
+                    print("FASTQ and .SAM files already exist. Proceed to next step.")
+                    break
 # CALL VARIANTS
             elif args.variants:
 
