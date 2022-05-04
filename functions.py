@@ -2,7 +2,6 @@ import os
 import shutil
 import subprocess
 import json
-from allelecount import *
 
 
 def call_mutations(accession):
@@ -10,6 +9,11 @@ def call_mutations(accession):
     subprocess.run(args, shell=True)
     # args2 = "bcftools view - i '%QUAL>=15' - H calls.bcf
     # process all alleles no file: bcftools mpileup  -a AD -Ou -f SARS-CoV-2_reference.fasta SRR12019375.sorted.bam | bcftools call -mA
+
+
+def gen_pileup(accession, nt_start=None, nt_stop=None):
+    args = f"samtools mpileup -d 100000 -r NC_045512.2:{nt_start}-{nt_stop} -o {accession}_pileup.txt {accession}.sorted.bam"
+    subprocess.run(args, shell=True)
 
 
 def view_mutations(accession):

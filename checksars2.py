@@ -41,24 +41,53 @@ if __name__ == '__main__':
         '--alleles',
         type=str,
         help='You must pass the nucleotide range.   Example:    --alleles 12345-54321')
-
+    parser.add_argument(
+        '-D',
+        '--delete',
+        action="store_true"
+    )
     args = parser.parse_args()
 
 # GLOBALS
 my_mutations_text_file = Path(args.infile.name + "_mutations.txt")
-my_alleles_text_file = Path(f"{args.infile.name}_{args.alleles}_NT.txt")
-my_sam_mpileup_file = Path(f"{args.infile.name}_pileup.txt")
-# print(my_alleles_text_file.name)
-# if args.infile and args.alleles:
-#     nt_start, nt_stop = split_range(args.alleles)
-#     if my_sam_mpileup_file.is_file() is False:
-#         infile = open(my_sam_mpileup_file, "r")
-#         outfile = open(my_alleles_text_file, "w")
-#         for line in infile:
-#             output = Base_Counter(line.strip())
-#             my_alleles_text_file.write(output + '\n')
-#     else:
-#         generate pileup
+
+
+if args.infile and args.alleles:
+    nt_start, nt_stop = split_range(args.alleles)
+
+    with open(args.infile.name) as f:
+        lines = [line.rstrip() for line in f]
+        for accession in lines:
+
+            # INPUT
+            my_sam_mpileup_file = Path(f"{accession}_pileup.txt")
+            # OUTPUT
+            my_alleles_text_file = Path(f"{accession}_{args.alleles}_NT.txt")
+
+            if my_alleles_text_file.is_file():
+                # PRINT FORMATTED OUTPUT
+                print(f"\n{accession} \tNT\tA\tC\tG\tT")
+
+                infile = open(my_alleles_text_file, 'r')
+                lines = [line.rstrip() for line in infile]
+
+                for line in lines:
+                    print(line)
+                infile.close()
+
+            elif my_sam_mpileup_file.is_file():
+                # THIS WRITES THE RANGE TO FILE
+                print('SAM mpileup file exists')
+                infile = open(my_sam_mpileup_file, "r")
+                outfile = open(my_alleles_text_file, "w")
+
+                for line in infile:
+                    output = Base_Counter(line.strip())
+                    outfile.write(output + '\n')
+            else:
+                # GENERATE MPILEUP
+                gen_pileup(accession, nt_start, nt_stop)
+                print('Pileup created')
 
 if args.infile:
     file_variant = open(my_mutations_text_file.name, 'w+')
@@ -99,20 +128,22 @@ if args.infile:
                     fastv_func(accession, my_fastq_1_file, my_fastq_2_file)
 # BOWTIE
             elif args.bowtie:
-                if my_fastq_file.is_file():
-                    fastqc_func(accession)
+                if my_fastq_file.is_file() and my_sam_file.is_file() is False:
+                    # fastqc_func(accession)
                     bow_tie(accession)
                     sam_tools_view(accession)
                     sam_tools_sort(accession)
                     sam_tools_index(accession)
-                elif my_fastq_1_file.is_file() and my_fastq_2_file.is_file():
-                    fastqc_func(accession, my_fastq_1_file.name, my_fastq_2_file.name)
-                    bow_tie(accession, my_fastq_1_file, my_fastq_2_file)
+                    # gen_pileup(accession)
+                elif my_fastq_1_file.is_file() and my_fastq_2_file.is_file() and my_sam_file.is_file() is False:
+                    # fastqc_func(accession, my_fastq_1_file.name, my_fastq_2_file.name)
+                    bow_tie(accession, my_fastq_1_file.name, my_fastq_2_file.name)
                     sam_tools_view(accession)
                     sam_tools_sort(accession)
                     sam_tools_index(accession)
-                else:
-                    print(my_fastq_1_file + " " + my_fastq_2_file + " does not exist.")
+
+                elif my_fastq_file.is_file() and my_fastq_2_file.is_file() and my_sam_file.is_file():
+                    print("files exist")
 # CALL VARIANTS
             elif args.variants:
 
@@ -121,6 +152,10 @@ if args.infile:
                     file_variant.write(view_mutations(accession).stdout)
                 else:
                     print("This has already been generated in file:" + my_mutations_text_file.name)
+# DELETE
+            elif args.delete:
+                os.remove(my_sam_file)
+                os.remove(my_bcf_file)
 # CHECK IF SRA IS POSITIVE OR NEGATIVE
             elif args.check:
                 if my_json_file.is_file():
