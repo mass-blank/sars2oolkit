@@ -14,8 +14,12 @@ if __name__ == '__main__':
         '-i',
         '--infile',
         help='Input SRA accession .txt file',
-        type=argparse.FileType('r'),
-        required=True)
+        type=argparse.FileType('r'))
+    parser.add_argument(
+        '-s',
+        '--single',
+        help='Input single SRA',
+        type=str)
     parser.add_argument(
         '-d',
         '--download',
@@ -46,13 +50,13 @@ if __name__ == '__main__':
         '--delete',
         action="store_true"
     )
+
     args = parser.parse_args()
 
-# GLOBALS
 my_mutations_text_file = Path(args.infile.name + "_mutations.txt")
 
-
 if args.infile and args.alleles:
+
     nt_start, nt_stop = split_range(args.alleles)
 
     with open(args.infile.name) as f:
@@ -88,6 +92,40 @@ if args.infile and args.alleles:
                 # GENERATE MPILEUP
                 gen_pileup(accession, nt_start, nt_stop)
                 print('Pileup created')
+if args.single:
+    my_sra_dir = Path(args.single + "/")
+    my_sra_file = Path(args.single + "/" + args.single + ".sra")
+    my_fastq_file = Path(args.single + ".fastq.gz")
+    my_fastq_1_file = Path(args.single + "_1.fastq.gz")
+    my_fastq_2_file = Path(args.single + "_2.fastq.gz")
+    my_json_file = Path(args.single + ".json")
+    my_sam_file = Path(args.single + ".sam")
+    my_bcf_file = Path(args.single + ".bcf")
+    my_html_file = Path(args.single + ".html")
+    my_bam_file = Path(args.single + ".bam")
+    file_variant = open(args.single + '_mutations.txt', 'w+')
+    if my_sra_file.is_file() is False:
+        fetch_func(args.single + '.sra')
+        fastq_func(my_sra_file)
+    elif my_fastq_file.is_file():
+        fastv_func(args.single)
+        bow_tie(args.single)
+        sam_tools_view(args.single)
+        sam_tools_sort(args.single)
+        sam_tools_index(args.single)
+        call_mutations(args.single)
+        file_variant.write(view_mutations(args.single).stdout)
+    elif my_fastq_1_file.is_file() and my_fastq_2_file.is_file():
+        fastv_func(args.single, my_fastq_1_file, my_fastq_2_file)
+        bow_tie(args.single, my_fastq_1_file, my_fastq_2_file)
+        sam_tools_view(args.single)
+        sam_tools_sort(args.single)
+        sam_tools_index(args.single)
+        call_mutations(args.single)
+        file_variant.write(view_mutations(args.single).stdout)
+    else:
+        print('Exists')
+
 
 if args.infile:
     file_variant = open(my_mutations_text_file.name, 'w+')
@@ -110,46 +148,44 @@ if args.infile:
 # DOWNLOAD: files, check if positive for SARS-CoV-2
 
             if args.download:
-                if (my_fastq_1_file.is_file() and my_fastq_2_file.is_file()) and (my_fastq_file.is_file() is False and my_json_file.is_file() is False):
+                if (my_fastq_1_file.is_file() and my_fastq_2_file.is_file()) and my_json_file.is_file() is False:
                     if is_full() is True:
                         shutil.rmtree(my_sra_dir)
                     else:
                         pass
+                    print(1)
                     fastv_func(accession, my_fastq_1_file, my_fastq_2_file)
-                elif my_fastq_file.is_file() and (my_fastq_1_file.is_file() is False and my_fastq_2_file.is_file() is False and my_json_file.is_file() is False):
+                elif my_fastq_file.is_file() and my_json_file.is_file() is False:
+                    print(2)
                     fastv_func(accession)
-                elif my_sra_file.is_file() and my_fastq_1_file.is_file() is False and my_fastq_2_file.is_file() is False and my_fastq_file.is_file() is False:
+                elif my_sra_file.is_file() and my_json_file.is_file() is False:
+                    print(3)
                     fastq_func(my_sra_file)
-                elif my_sra_file.is_file() is False and my_fastq_1_file.is_file() is True and my_json_file.is_file() is False:
-                    fastv_func(accession, my_fastq_1_file, my_fastq_2_file)
-                elif my_json_file.is_file() is False and my_fastq_1_file.is_file() is False and my_json_file.is_file() is False:
-                    fetch_func(accession + ".sra")
-                    fastq_func(my_sra_file)
-                    fastv_func(accession, my_fastq_1_file, my_fastq_2_file)
+                elif my_json_file.is_file() and my_fastq_2_file.is_file() and my_fastq_file.is_file():
+                    print('All downloads complete')
+                else:
+                    pass
 # BOWTIE
             elif args.bowtie:
-                if my_fastq_file.is_file() and my_sam_file.is_file() is False:
-                    # fastqc_func(accession)
-                    bow_tie(accession)
+                if my_bam_file.is_file() is False:
+                    if isPairedSRA(accession):
+                        bow_tie(accession, my_fastq_1_file.name, my_fastq_2_file.name)
+                    else:
+                        bow_tie(accession)
                     sam_tools_view(accession)
                     sam_tools_sort(accession)
                     sam_tools_index(accession)
-                    # gen_pileup(accession)
-                elif my_fastq_1_file.is_file() and my_fastq_2_file.is_file() and my_sam_file.is_file() is False:
-                    # fastqc_func(accession, my_fastq_1_file.name, my_fastq_2_file.name)
-                    bow_tie(accession, my_fastq_1_file.name, my_fastq_2_file.name)
-                    sam_tools_view(accession)
-                    sam_tools_sort(accession)
-                    sam_tools_index(accession)
-
-                elif my_fastq_file.is_file() and my_sam_file.is_file() or my_fastq_2_file.is_file() and my_sam_file.is_file():
+                elif (my_fastq_file.is_file() and my_sam_file.is_file()) and (my_fastq_2_file.is_file() and my_sam_file.is_file()):
                     print("FASTQ and .SAM files already exist. Proceed to next step.")
-                    break
+                else:
+                    pass
+
 # CALL VARIANTS
             elif args.variants:
 
                 if my_bcf_file.is_file() is False:
                     call_mutations(accession)
+                elif my_bcf_file.is_file():
                     file_variant.write(view_mutations(accession).stdout)
                 else:
                     print("This has already been generated in file:" + my_mutations_text_file.name)

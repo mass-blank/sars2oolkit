@@ -5,14 +5,14 @@ import json
 
 
 def call_mutations(accession):
-    args = f"bcftools mpileup -Ou -f SARS-CoV-2_reference.fasta {accession}.sorted.bam | bcftools call -mv -Ob -o {accession}.bcf"
+    args = f"bcftools mpileup -d 150000 -Ou -f SARS-CoV-2_reference.fasta {accession}.sorted.bam | bcftools call -mv -Ob -o {accession}.bcf"
     subprocess.run(args, shell=True)
     # args2 = "bcftools view - i '%QUAL>=15' - H calls.bcf
     # process all alleles no file: bcftools mpileup  -a AD -Ou -f SARS-CoV-2_reference.fasta SRR12019375.sorted.bam | bcftools call -mA
 
 
 def gen_pileup(accession, nt_start=None, nt_stop=None):
-    args = f"samtools mpileup -d 100000 -r NC_045512.2:{nt_start}-{nt_stop} -o {accession}_pileup.txt {accession}.sorted.bam"
+    args = f"samtools mpileup -d 150000 -r NC_045512.2:{nt_start}-{nt_stop} -o {accession}_pileup.txt {accession}.sorted.bam"
     subprocess.run(args, shell=True)
 
 
@@ -60,7 +60,10 @@ def sam_tools_index(accession):
 
 
 def fastq_func(accession):
-    subprocess.run(["fastq-dump", "--gzip", "--split-e", accession])
+    if isPairedSRA(accession):
+        subprocess.run(["fastq-dump", "--gzip", accession])
+    else:
+        subprocess.run(["fastq-dump", "--gzip", "--split-e", accession])
 
 
 def fetch_func(accession):
