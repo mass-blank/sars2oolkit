@@ -11,8 +11,11 @@ def call_mutations(accession):
     # process all alleles no file: bcftools mpileup  -a AD -Ou -f SARS-CoV-2_reference.fasta SRR12019375.sorted.bam | bcftools call -mA
 
 
-def gen_pileup(accession, nt_start=None, nt_stop=None):
-    args = f"samtools mpileup -d 150000 -r NC_045512.2:{nt_start}-{nt_stop} -o {accession}_pileup.txt {accession}.sorted.bam"
+# def gen_pileup(accession, nt_start=None, nt_stop=None):
+#     args = f"samtools mpileup -d 150000 -r NC_045512.2:{nt_start}-{nt_stop} -o {accession}_{nt_start}-{nt_stop}_pileup.txt {accession}.sorted.bam"
+#     subprocess.run(args, shell=True)
+def gen_pileup(accession):
+    args = f"samtools mpileup -d 150000 -o {accession}_pileup.txt {accession}.sorted.bam"
     subprocess.run(args, shell=True)
 
 
@@ -92,10 +95,6 @@ def check_positive(accession):
     with open(accession + ".json", "r") as file:
         data = json.loads(file.read())
         return(data["kmer_detection_result"]["result"])
-
-
-def split_range(nt_range):
-    return nt_range.split('-')
 
 
 def is_full():

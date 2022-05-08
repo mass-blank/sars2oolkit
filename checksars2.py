@@ -1,6 +1,7 @@
 import os
 import shutil
 import argparse
+import re
 
 from traceback import print_exc
 from functions import *
@@ -57,7 +58,9 @@ my_mutations_text_file = Path(args.infile.name + "_mutations.txt")
 
 if args.infile and args.alleles:
 
-    nt_start, nt_stop = split_range(args.alleles)
+    allele = args.alleles
+    alleles = allele.split(',')
+    print(alleles)
 
     with open(args.infile.name) as f:
         lines = [line.rstrip() for line in f]
@@ -66,32 +69,40 @@ if args.infile and args.alleles:
             # INPUT
             my_sam_mpileup_file = Path(f"{accession}_pileup.txt")
             # OUTPUT
-            my_alleles_text_file = Path(f"{accession}_{args.alleles}_NT.txt")
+            my_alleles_text_file = Path(f"{accession}_NT.txt")
 
             if my_alleles_text_file.is_file():
                 # PRINT FORMATTED OUTPUT
-                print(f"\n{accession} \tNT\tA\tC\tG\tT")
+                print(f"\n{accession} \tNT\tA\tC\tG\tT\tN\ta\tc\tg\tt\tn\tdel\tdot\tcomma")
 
-                infile = open(my_alleles_text_file, 'r')
-                lines = [line.rstrip() for line in infile]
-
-                for line in lines:
-                    print(line)
-                infile.close()
+                with open(my_alleles_text_file, 'r') as infile:
+                    lines = [line.rstrip() for line in infile]
+                    for line in lines:
+                        split_line = line.split('\t')
+                        for a in alleles:
+                            if split_line[1].startswith(a):
+                                print(line)
 
             elif my_sam_mpileup_file.is_file():
                 # THIS WRITES THE RANGE TO FILE
-                print('SAM mpileup file exists')
                 infile = open(my_sam_mpileup_file, "r")
                 outfile = open(my_alleles_text_file, "w")
 
                 for line in infile:
                     output = Base_Counter(line.strip())
                     outfile.write(output + '\n')
-            else:
+            elif my_sam_mpileup_file.is_file() is False and my_alleles_text_file.is_file() is False:
                 # GENERATE MPILEUP
-                gen_pileup(accession, nt_start, nt_stop)
+                gen_pileup(accession)
+                infile = open(my_sam_mpileup_file, "r")
+                outfile = open(my_alleles_text_file, "w")
+
+                for line in infile:
+                    output = Base_Counter(line.strip())
+                    outfile.write(output + '\n')
                 print('Pileup created')
+            else:
+                pass
 if args.single:
     my_sra_dir = Path(args.single + "/")
     my_sra_file = Path(args.single + "/" + args.single + ".sra")
@@ -128,12 +139,12 @@ if args.single:
 
 
 if args.infile:
+
     file_variant = open(my_mutations_text_file.name, 'w+')
 
     with open(args.infile.name) as f:
         lines = [line.rstrip() for line in f]
         for accession in lines:
-
             my_sra_dir = Path(accession + "/")
             my_sra_file = Path(accession + "/" + accession + ".sra")
             my_fastq_file = Path(accession + ".fastq.gz")
@@ -145,8 +156,7 @@ if args.infile:
             my_html_file = Path(accession + ".html")
             my_bam_file = Path(accession + ".bam")
 
-# DOWNLOAD: files, check if positive for SARS-CoV-2
-
+    # DOWNLOAD: files, check if positive for SARS-CoV-2
             if args.download:
                 if (my_fastq_1_file.is_file() and my_fastq_2_file.is_file()) and my_json_file.is_file() is False:
                     if is_full() is True:
@@ -163,9 +173,11 @@ if args.infile:
                     fastq_func(my_sra_file)
                 elif my_json_file.is_file() and my_fastq_2_file.is_file() and my_fastq_file.is_file():
                     print('All downloads complete')
+                elif my_sra_file.is_file() is False:
+                    fetch_func(accession)
                 else:
                     pass
-# BOWTIE
+    # BOWTIE
             elif args.bowtie:
                 if my_bam_file.is_file() is False:
                     if isPairedSRA(accession):
@@ -180,20 +192,30 @@ if args.infile:
                 else:
                     pass
 
-# CALL VARIANTS
+    # CALL VARIANTS
             elif args.variants:
+                if os.stat(my_mutations_text_file).st_size > 0:
+                    print("This has already been generated in file:" + my_mutations_text_file.name)
+                    mutations = open(my_mutations_text_file, 'r')
 
-                if my_bcf_file.is_file() is False:
+                    for line in mutations:
+                        print(line)
+                    mutations.close()
+                    break
+                elif my_bcf_file.is_file() is False:
                     call_mutations(accession)
+                    print(2)
                 elif my_bcf_file.is_file():
                     file_variant.write(view_mutations(accession).stdout)
+                    print(3)
                 else:
-                    print("This has already been generated in file:" + my_mutations_text_file.name)
-# DELETE
+                    pass
+    # DELETE
             elif args.delete:
                 os.remove(my_sam_file)
                 os.remove(my_bcf_file)
-# CHECK IF SRA IS POSITIVE OR NEGATIVE
+
+    # CHECK IF SRA IS POSITIVE OR NEGATIVE
             elif args.check:
                 if my_json_file.is_file():
                     try:
@@ -214,7 +236,7 @@ if args.infile:
                     elif check_positive(accession) == "POSITIVE":
                         print(accession + " is Positive")
                         os.remove(my_json_file)
-                        os.remove(my_bam_file)
+                        os.remove(my_sam_file)
                         try:
                             os.remove(my_sam_file)
                         except Exception as ex:
