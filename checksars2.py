@@ -90,6 +90,9 @@ if args.infile and args.alleles:
                 for line in infile:
                     output = Base_Counter(line.strip())
                     outfile.write(output + '\n')
+                print(f'{accession}: pileup created')
+                infile.close()
+                outfile.close()
             elif my_sam_mpileup_file.is_file() is False and my_alleles_text_file.is_file() is False:
                 # GENERATE MPILEUP
                 gen_pileup(accession)
@@ -99,7 +102,9 @@ if args.infile and args.alleles:
                 for line in infile:
                     output = Base_Counter(line.strip())
                     outfile.write(output + '\n')
-                print('Pileup created')
+                print(f'{accession}: pileup created')
+                infile.close()
+                outfile.close()
             else:
                 pass
 if args.single:
