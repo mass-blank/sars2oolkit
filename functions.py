@@ -2,6 +2,8 @@ import os
 import shutil
 import subprocess
 import json
+import re
+from pathlib import Path
 
 
 def call_mutations(accession):
@@ -24,6 +26,29 @@ def view_mutations(accession):
     return subprocess.run(args, shell=True, capture_output=True, text=True)
 
 
+def fastq_exists(accession):
+    try:
+        contents = subprocess.check_output(["prefetch", "--type", "fastq", accession])
+        print(contents.count(b'\n'))
+        if contents.count(b'\n' == 2):
+            return subprocess.run(["prefetch", accession])
+        else:
+            result = subprocess.run(['prefetch', '--type', 'fastq', accession], capture_output=True)
+            re_result = re.findall(r"'.*[gz]'", result.stderr.decode('utf-8'))
+            re_result = [i.strip("'") for i in re_result]
+            re_result = list(dict.fromkeys(re_result))
+            infile1 = Path(accession + "/" + re_result[0])
+            infile2 = Path(accession + "/" + re_result[1])
+            outfile1 = Path(accession + "_1.fastq.gz")
+            outfile2 = Path(accession + "_2.fastq.gz")
+            current_dir = os.path.abspath(os.getcwd())
+            os.rename(infile1, os.path.join(current_dir, outfile1))
+            os.rename(infile2, os.path.join(current_dir, outfile2))
+            return outfile1.name + ' and ' + outfile2.name + 'have finished downloading'
+    except subprocess.CalledProcessError:
+        raise Exception("Error running fastq-dump on ", accession)
+
+
 def isPairedSRA(accession):
     filename = os.path.abspath(accession)
     try:
@@ -38,9 +63,9 @@ def isPairedSRA(accession):
         raise Exception("Error running fastq-dump on ", accession)
 
 
-def bow_tie(accession, sra_number_1=None, sra_number_2=None):
+def bow_tie(accession, fastq_file_1=None, fastq_file_2=None):
     if isPairedSRA(accession):
-        args = "bowtie2 " + " -x " + " bowtie " + " -1 " + str(sra_number_1) + " -2 " + str(sra_number_2) + " -S " + accession + ".sam"
+        args = "bowtie2 " + " -x " + " bowtie " + " -1 " + str(fastq_file_1) + " -2 " + str(fastq_file_2) + " -S " + accession + ".sam"
         subprocess.run(args, shell=True)
     else:
         args = "bowtie2 " + " -x " + " bowtie " + " -U" + accession + ".fastq.gz" + " -S " + accession + ".sam"
@@ -70,21 +95,21 @@ def fastq_func(accession):
 
 
 def fetch_func(accession):
-    subprocess.run(["prefetch", accession])
+    subprocess.run(["prefetch", accession], stdout=subprocess.PIPE)
 
 
-def fastqc_func(accession, fastqfile_1=None, fastqfile_2=None):
+def fastqc_func(accession, fastq_file_1=None, fastq_file_2=None):
     if isPairedSRA(accession):
-        args = f"fastqc {fastqfile_1} {fastqfile_2}"
+        args = f"fastqc {fastq_file_1} {fastq_file_2}"
         subprocess.run(args, shell=True)
     else:
         args = f"fastqc {accession}.fastq.gz"
         subprocess.run(args, shell=True)
 
 
-def fastv_func(accession, fastqfile_1=None, fastqfile_2=None):
-    if isPairedSRA(accession):
-        args = "fastv" + " --in1 " + str(fastqfile_1) + " --in2 " + str(fastqfile_2) + " -g " + "SARS-CoV-2.genomes.fa" + " -k " + "SARS-CoV-2.kmer.fa" + " -h " + accession + ".html" + " -j " + accession + ".json"
+def fastv_func(accession, fastq_file_1=None, fastq_file_2=None):
+    if fastq_file_1.is_file() and fastq_file_2.is_file():
+        args = "fastv" + " --in1 " + str(fastq_file_1) + " --in2 " + str(fastq_file_2) + " -g " + "SARS-CoV-2.genomes.fa" + " -k " + "SARS-CoV-2.kmer.fa" + " -h " + accession + ".html" + " -j " + accession + ".json"
         subprocess.run(args, shell=True)
     else:
         args = "fastv" + " -i " + accession + ".fastq.gz" + " -g " + "SARS-CoV-2.genomes.fa" + " -k " + "SARS-CoV-2.kmer.fa" + " -h " + accession + ".html" + " -j " + accession + ".json"

@@ -1,7 +1,6 @@
 import os
 import shutil
 import argparse
-import re
 
 from traceback import print_exc
 from functions import *
@@ -158,23 +157,19 @@ if args.infile:
 
     # DOWNLOAD: files, check if positive for SARS-CoV-2
             if args.download:
+
                 if (my_fastq_1_file.is_file() and my_fastq_2_file.is_file()) and my_json_file.is_file() is False:
                     if is_full() is True:
                         shutil.rmtree(my_sra_dir)
                     else:
                         pass
-                    print(1)
                     fastv_func(accession, my_fastq_1_file, my_fastq_2_file)
                 elif my_fastq_file.is_file() and my_json_file.is_file() is False:
-                    print(2)
                     fastv_func(accession)
-                elif my_sra_file.is_file() and my_json_file.is_file() is False:
-                    print(3)
-                    fastq_func(my_sra_file)
+                elif my_fastq_file.is_file() is False:
+                    fastq_exists(accession)
                 elif my_json_file.is_file() and my_fastq_2_file.is_file() and my_fastq_file.is_file():
                     print('All downloads complete')
-                elif my_sra_file.is_file() is False:
-                    fetch_func(accession)
                 else:
                     pass
     # BOWTIE
