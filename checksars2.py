@@ -84,27 +84,19 @@ if args.infile and args.alleles:
 
             elif my_sam_mpileup_file.is_file():
                 # THIS WRITES THE RANGE TO FILE
-                infile = open(my_sam_mpileup_file, "r")
-                outfile = open(my_alleles_text_file, "w")
-
-                for line in infile:
-                    output = Base_Counter(line.strip())
-                    outfile.write(output + '\n')
+                with open(my_sam_mpileup_file, "r") as infile, open(my_alleles_text_file, "w") as outfile:
+                    for line in infile:
+                        output = Base_Counter(line.strip())
+                        outfile.write(output + '\n')
                 print(f'{accession}: pileup created')
-                infile.close()
-                outfile.close()
             elif my_sam_mpileup_file.is_file() is False and my_alleles_text_file.is_file() is False:
                 # GENERATE MPILEUP
                 gen_pileup(accession)
-                infile = open(my_sam_mpileup_file, "r")
-                outfile = open(my_alleles_text_file, "w")
-
-                for line in infile:
-                    output = Base_Counter(line.strip())
-                    outfile.write(output + '\n')
+                with open(my_sam_mpileup_file, "r") as infile, open(my_alleles_text_file, "w") as outfile:
+                    for line in infile:
+                        output = Base_Counter(line.strip())
+                        outfile.write(output + '\n')
                 print(f'{accession}: pileup created')
-                infile.close()
-                outfile.close()
             else:
                 pass
 if args.single:
@@ -178,7 +170,7 @@ if args.infile:
                 elif my_json_file.is_file() and my_fastq_1_file.is_file() and my_fastq_file.is_file():
                     print('All downloads complete')
                 elif my_sra_file.is_file() and my_fastq_1_file.is_file() is False and my_fastq_file.is_file() is False:
-                    fastq_func(accession)
+                    fastq_func(my_sra_file)
                     print(4)
                 elif my_sra_file.is_file() and my_fastq_1_file.is_file() and my_fastq_file.is_file() and my_sam_file.is_file():
                     continue
