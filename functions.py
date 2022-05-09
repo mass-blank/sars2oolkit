@@ -28,23 +28,28 @@ def view_mutations(accession):
 
 def fastq_exists(accession):
     try:
-        contents = subprocess.check_output(["prefetch", "--type", "fastq", accession])
-        print(contents.count(b'\n'))
-        if contents.count(b'\n' == 2):
-            return subprocess.run(["prefetch", accession])
-        else:
-            result = subprocess.run(['prefetch', '--type', 'fastq', accession], capture_output=True)
-            re_result = re.findall(r"'.*[gz]'", result.stderr.decode('utf-8'))
-            re_result = [i.strip("'") for i in re_result]
-            re_result = list(dict.fromkeys(re_result))
+        result = subprocess.run(['prefetch', '--type', 'fastq', accession], capture_output=True)
+        re_result = re.findall(r"'.*[gz]'", result.stderr.decode('utf-8'))
+        re_result = [i.strip("'") for i in re_result]
+        re_result = list(dict.fromkeys(re_result))
+        current_dir = os.path.abspath(os.getcwd())
+        if len(re_result) == 1:
+            infile = Path(accession + "/" + re_result[0])
+            outfile = Path(accession + ".fastq.gz")
+            os.rename(infile, os.path.join(current_dir, outfile))
+            return outfile.name
+        elif len(re_result) == 2:
             infile1 = Path(accession + "/" + re_result[0])
             infile2 = Path(accession + "/" + re_result[1])
             outfile1 = Path(accession + "_1.fastq.gz")
             outfile2 = Path(accession + "_2.fastq.gz")
-            current_dir = os.path.abspath(os.getcwd())
             os.rename(infile1, os.path.join(current_dir, outfile1))
             os.rename(infile2, os.path.join(current_dir, outfile2))
             return outfile1.name + ' and ' + outfile2.name + 'have finished downloading'
+        elif not re_result:
+            subprocess.run(['prefetch', accession])
+        else:
+            print('fastq_exists else conditional')
     except subprocess.CalledProcessError:
         raise Exception("Error running fastq-dump on ", accession)
 
@@ -64,14 +69,17 @@ def isPairedSRA(accession):
 
 
 def bow_tie(accession, fastq_file_1=None, fastq_file_2=None, fastq_file=None):
-    if fastq_file_1.is_file() and fastq_file_2.is_file():
-        args = "bowtie2 " + " -x " + " bowtie " + " -1 " + str(fastq_file_1) + " -2 " + str(fastq_file_2) + " -S " + accession + ".sam"
-        subprocess.run(args, shell=True)
-    elif fastq_file.is_file():
-        args = "bowtie2 " + " -x " + " bowtie " + " -U" + accession + ".fastq.gz" + " -S " + accession + ".sam"
-        subprocess.run(args, shell=True)
+    if fastq_file_1 is not None and fastq_file_2 is not None:
+        if fastq_file_1.is_file() and fastq_file_2.is_file():
+            args = "bowtie2 " + " -x " + " bowtie " + " -1 " + str(fastq_file_1) + " -2 " + str(fastq_file_2) + " -S " + accession + ".sam"
+            subprocess.run(args, shell=True)
+        elif fastq_file.is_file():
+            args = "bowtie2 " + " -x " + " bowtie " + " -U" + accession + ".fastq.gz" + " -S " + accession + ".sam"
+            subprocess.run(args, shell=True)
+        else:
+            print('No FASTQ files.')
     else:
-        print('No FASTQ files.')
+        print('bow_tie arguments are none')
 
 
 def sam_tools_view(accession):
@@ -110,9 +118,10 @@ def fastqc_func(accession, fastq_file_1=None, fastq_file_2=None):
 
 
 def fastv_func(accession, fastq_file_1=None, fastq_file_2=None):
-    if fastq_file_1.is_file() and fastq_file_2.is_file():
-        args = "fastv" + " --in1 " + str(fastq_file_1) + " --in2 " + str(fastq_file_2) + " -g " + "SARS-CoV-2.genomes.fa" + " -k " + "SARS-CoV-2.kmer.fa" + " -h " + accession + ".html" + " -j " + accession + ".json"
-        subprocess.run(args, shell=True)
+    if fastq_file_1 is not None and fastq_file_2 is not None:
+        if fastq_file_1.is_file() and fastq_file_2.is_file():
+            args = "fastv" + " --in1 " + str(fastq_file_1) + " --in2 " + str(fastq_file_2) + " -g " + "SARS-CoV-2.genomes.fa" + " -k " + "SARS-CoV-2.kmer.fa" + " -h " + accession + ".html" + " -j " + accession + ".json"
+            subprocess.run(args, shell=True)
     else:
         args = "fastv" + " -i " + accession + ".fastq.gz" + " -g " + "SARS-CoV-2.genomes.fa" + " -k " + "SARS-CoV-2.kmer.fa" + " -h " + accession + ".html" + " -j " + accession + ".json"
         subprocess.run(args, shell=True)

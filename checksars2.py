@@ -168,13 +168,22 @@ if args.infile:
                     else:
                         pass
                     fastv_func(accession, my_fastq_1_file, my_fastq_2_file)
+                    print(1)
                 elif my_fastq_file.is_file() and my_json_file.is_file() is False:
                     fastv_func(accession)
-                elif my_fastq_file.is_file() is False and my_fastq_1_file.is_file() is False:
+                    print(2)
+                elif my_fastq_file.is_file() is False and my_fastq_1_file.is_file() is False and my_sra_file.is_file() is False:
                     fastq_exists(accession)
-                elif my_json_file.is_file() and my_fastq_2_file.is_file() and my_fastq_file.is_file():
+                    print(3)
+                elif my_json_file.is_file() and my_fastq_1_file.is_file() and my_fastq_file.is_file():
                     print('All downloads complete')
+                elif my_sra_file.is_file() and my_fastq_1_file.is_file() is False and my_fastq_file.is_file() is False:
+                    fastq_func(accession)
+                    print(4)
+                elif my_sra_file.is_file() and my_fastq_1_file.is_file() and my_fastq_file.is_file() and my_sam_file.is_file():
+                    continue
                 else:
+                    print('download logic pass')
                     pass
     # BOWTIE
             elif args.bowtie:
@@ -183,10 +192,9 @@ if args.infile:
                     sam_tools_view(accession)
                     sam_tools_sort(accession)
                     sam_tools_index(accession)
-                elif (my_fastq_file.is_file() and my_sam_file.is_file()) and (my_fastq_2_file.is_file() and my_sam_file.is_file()):
+                elif (my_fastq_file.is_file() and my_sam_file.is_file()) and (my_fastq_1_file.is_file() and my_sam_file.is_file()):
                     print("FASTQ and .SAM files already exist. Proceed to next step.")
                 else:
-                    print('else')
                     pass
 
     # CALL VARIANTS
