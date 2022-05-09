@@ -157,7 +157,6 @@ if args.infile:
 
     # DOWNLOAD: files, check if positive for SARS-CoV-2
             if args.download:
-
                 if (my_fastq_1_file.is_file() and my_fastq_2_file.is_file()) and my_json_file.is_file() is False:
                     if is_full() is True:
                         shutil.rmtree(my_sra_dir)
@@ -166,7 +165,7 @@ if args.infile:
                     fastv_func(accession, my_fastq_1_file, my_fastq_2_file)
                 elif my_fastq_file.is_file() and my_json_file.is_file() is False:
                     fastv_func(accession)
-                elif my_fastq_file.is_file() is False:
+                elif my_fastq_file.is_file() is False and my_fastq_1_file.is_file() is False:
                     fastq_exists(accession)
                 elif my_json_file.is_file() and my_fastq_2_file.is_file() and my_fastq_file.is_file():
                     print('All downloads complete')
@@ -175,16 +174,14 @@ if args.infile:
     # BOWTIE
             elif args.bowtie:
                 if my_bam_file.is_file() is False:
-                    if isPairedSRA(accession):
-                        bow_tie(accession, my_fastq_1_file.name, my_fastq_2_file.name)
-                    else:
-                        bow_tie(accession)
+                    bow_tie(accession, my_fastq_1_file, my_fastq_2_file, my_fastq_file)
                     sam_tools_view(accession)
                     sam_tools_sort(accession)
                     sam_tools_index(accession)
                 elif (my_fastq_file.is_file() and my_sam_file.is_file()) and (my_fastq_2_file.is_file() and my_sam_file.is_file()):
                     print("FASTQ and .SAM files already exist. Proceed to next step.")
                 else:
+                    print('else')
                     pass
 
     # CALL VARIANTS

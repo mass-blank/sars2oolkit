@@ -50,8 +50,8 @@ def fastq_exists(accession):
 
 
 def isPairedSRA(accession):
-    filename = os.path.abspath(accession)
-    try:
+    filename = Path(os.path.abspath(accession))
+    if filename.is_file():
         contents = subprocess.check_output(["fastq-dump", "-X", "1", "-Z", "--split-spot", filename])
         if (contents.count(b'\n') == 4):
             return False
@@ -59,17 +59,19 @@ def isPairedSRA(accession):
             return True
         else:
             pass
-    except subprocess.CalledProcessError:
-        raise Exception("Error running fastq-dump on ", accession)
+    else:
+        print(filename.name + ' does not exist.')
 
 
-def bow_tie(accession, fastq_file_1=None, fastq_file_2=None):
-    if isPairedSRA(accession):
+def bow_tie(accession, fastq_file_1=None, fastq_file_2=None, fastq_file=None):
+    if fastq_file_1.is_file() and fastq_file_2.is_file():
         args = "bowtie2 " + " -x " + " bowtie " + " -1 " + str(fastq_file_1) + " -2 " + str(fastq_file_2) + " -S " + accession + ".sam"
         subprocess.run(args, shell=True)
-    else:
+    elif fastq_file.is_file():
         args = "bowtie2 " + " -x " + " bowtie " + " -U" + accession + ".fastq.gz" + " -S " + accession + ".sam"
         subprocess.run(args, shell=True)
+    else:
+        print('No FASTQ files.')
 
 
 def sam_tools_view(accession):
