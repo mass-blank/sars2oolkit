@@ -37,7 +37,7 @@ def fastq_exists(accession):
             infile = Path(accession + "/" + re_result[0])
             outfile = Path(accession + ".fastq.gz")
             os.rename(infile, os.path.join(current_dir, outfile))
-            return outfile.name
+            return f"{outfile.name} has finished downloading"
         elif len(re_result) == 2:
             infile1 = Path(accession + "/" + re_result[0])
             infile2 = Path(accession + "/" + re_result[1])
@@ -49,7 +49,7 @@ def fastq_exists(accession):
         elif not re_result:
             subprocess.run(['prefetch', accession])
         else:
-            print('fastq_exists else conditional')
+            print('Fastq_exists else conditional')
     except subprocess.CalledProcessError:
         raise Exception("Error running fastq-dump on ", accession)
 

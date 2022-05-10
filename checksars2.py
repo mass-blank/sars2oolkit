@@ -135,114 +135,114 @@ if args.single:
 
 
 if args.infile:
-    with open(my_mutations_text_file.name, 'w+') as file_variant:
-        with open(args.infile.name) as f:
-            lines = [line.rstrip() for line in f]
-            for accession in lines:
-                my_sra_dir = Path(accession + "/")
-                my_sra_file = Path(accession + "/" + accession + ".sra")
-                my_fastq_file = Path(accession + ".fastq.gz")
-                my_fastq_1_file = Path(accession + "_1.fastq.gz")
-                my_fastq_2_file = Path(accession + "_2.fastq.gz")
-                my_json_file = Path(accession + ".json")
-                my_sam_file = Path(accession + ".sam")
-                my_bcf_file = Path(accession + ".bcf")
-                my_html_file = Path(accession + ".html")
-                my_bam_file = Path(accession + ".bam")
+    with open(my_mutations_text_file.name, 'w+') as file_variant, open(args.infile.name, 'r') as file_accession:
+        lines = [line.rstrip() for line in file_accession]
+        for accession in lines:
+            my_sra_dir = Path(accession + "/")
+            my_sra_file = Path(accession + "/" + accession + ".sra")
+            my_fastq_file = Path(accession + ".fastq.gz")
+            my_fastq_1_file = Path(accession + "_1.fastq.gz")
+            my_fastq_2_file = Path(accession + "_2.fastq.gz")
+            my_json_file = Path(accession + ".json")
+            my_sam_file = Path(accession + ".sam")
+            my_bcf_file = Path(accession + ".bcf")
+            my_html_file = Path(accession + ".html")
+            my_bam_file = Path(accession + ".bam")
 
         # DOWNLOAD: files, check if positive for SARS-CoV-2
-                if args.download:
-                    if (my_fastq_1_file.is_file()
-                        and my_fastq_2_file.is_file()
-                            and my_json_file.is_file() is False):
-                        if is_full():
-                            shutil.rmtree(my_sra_dir)
-                        else:
-                            pass
-                        fastv_func(accession, my_fastq_1_file, my_fastq_2_file)
-                        print(1)
-                    elif my_fastq_file.is_file() and my_json_file.is_file() is False:
-                        fastv_func(accession)
-                        print(2)
-                    elif (my_fastq_file.is_file() is False
-                          and my_fastq_1_file.is_file() is False
-                          and my_sra_file.is_file() is False):
-                        fastq_exists(accession)
-                        print(3)
-                    elif (my_json_file.is_file()
-                          and my_fastq_1_file.is_file()
-                          and my_fastq_file.is_file()):
-                        print('All downloads complete')
-                    elif (my_sra_file.is_file()
-                          and my_fastq_1_file.is_file() is False
-                          and my_fastq_file.is_file() is False):
-                        fastq_func(my_sra_file)
-                        print(4)
-                    elif (my_sra_file.is_file()
-                          and my_fastq_1_file.is_file()
-                          and my_fastq_file.is_file()
-                          and my_sam_file.is_file()):
-                        continue
+            if args.download:
+                if (my_fastq_1_file.is_file()
+                    and my_fastq_2_file.is_file()
+                        and my_json_file.is_file() is False):
+                    if is_full():
+                        shutil.rmtree(my_sra_dir)
                     else:
-                        print('download logic pass')
                         pass
+                    fastv_func(accession, my_fastq_1_file, my_fastq_2_file)
+                    print(1)
+                elif (my_fastq_file.is_file()
+                      and my_json_file.is_file() is False):
+                    fastv_func(accession)
+                    print(2)
+                elif (my_fastq_file.is_file() is False
+                      and my_fastq_1_file.is_file() is False
+                      and my_sra_file.is_file() is False):
+                    fastq_exists(accession)
+                    print(3)
+                elif (my_json_file.is_file()
+                      and my_fastq_1_file.is_file()
+                      and my_fastq_file.is_file()):
+                    print('All downloads complete')
+                elif (my_sra_file.is_file()
+                      and my_fastq_1_file.is_file() is False
+                      and my_fastq_file.is_file() is False):
+                    fastq_func(my_sra_file)
+                    print(4)
+                elif (my_sra_file.is_file()
+                      and my_fastq_1_file.is_file()
+                      and my_fastq_file.is_file()
+                      and my_sam_file.is_file()):
+                    continue
+                else:
+                    print('Download logic pass')
+                    pass
 
         # BOWTIE
-                elif args.bowtie:
-                    if my_bam_file.is_file() is False:
-                        bow_tie(accession, my_fastq_1_file, my_fastq_2_file, my_fastq_file)
-                        sam_tools_view(accession)
-                        sam_tools_sort(accession)
-                        sam_tools_index(accession)
-                    elif (my_fastq_file.is_file() and my_sam_file.is_file()) and (my_fastq_1_file.is_file() and my_sam_file.is_file()):
-                        print("FASTQ and .SAM files already exist. Proceed to next step.")
-                    else:
-                        pass
+            elif args.bowtie:
+                if my_bam_file.is_file() is False:
+                    bow_tie(accession, my_fastq_1_file, my_fastq_2_file, my_fastq_file)
+                    sam_tools_view(accession)
+                    sam_tools_sort(accession)
+                    sam_tools_index(accession)
+                elif (my_fastq_file.is_file() and my_sam_file.is_file()) and (my_fastq_1_file.is_file() and my_sam_file.is_file()):
+                    print("FASTQ and .SAM files already exist. Proceed to next step.")
+                else:
+                    pass
 
         # CALL VARIANTS
-                elif args.variants:
-                    if os.stat(my_mutations_text_file).st_size > 0:
-                        with open(my_mutations_text_file, 'r') as mutations_file:
-                            for line in mutations:
-                                print(line)
-                    elif my_bcf_file.is_file() is False:
-                        call_mutations(accession)
-                    elif my_bcf_file.is_file():
-                        file_variant.write(view_mutations(accession).stdout)
-                    else:
-                        pass
+            elif args.variants:
+                if os.stat(my_mutations_text_file).st_size > 0:
+                    with open(my_mutations_text_file, 'r') as mutations_file:
+                        for line in mutations:
+                            print(line)
+                elif my_bcf_file.is_file() is False:
+                    call_mutations(accession)
+                elif my_bcf_file.is_file():
+                    file_variant.write(view_mutations(accession).stdout)
+                else:
+                    pass
 
         # DELETE
-                elif args.delete:
-                    os.remove(my_sam_file)
-                    os.remove(my_bcf_file)
+            elif args.delete:
+                os.remove(my_sam_file)
+                os.remove(my_bcf_file)
 
         # CHECK IF SRA IS POSITIVE OR NEGATIVE
-                elif args.check:
-                    if my_json_file.is_file():
-                        print('Removing SRA directory')
-                        shutil.rmtree(my_sra_dir)
-                        if check_positive(accession) == "NEGATIVE":
-                            print(accession + " is Negative: deleting")
-                            os.remove(my_json_file)
-                            if my_fastq_file.is_file():
-                                os.remove(my_fastq_file)
-                            else:
-                                os.remove(my_fastq_1_file)
-                                os.remove(my_fastq_2_file)
-                            os.remove(my_html_file)
-                        elif check_positive(accession) == "POSITIVE":
-                            print(accession + " is Positive")
-                            os.remove(my_json_file)
-                            os.remove(my_sam_file)
-                            os.remove(my_sam_file)
-                            if my_fastq_file.is_file():
-                                os.remove(my_fastq_file)
-                            elif my_fastq_1_file.is_file() and my_fastq_2_file.is_file():
-                                os.remove(my_fastq_2_file)
-                            else:
-                                pass
+            elif args.check:
+                if my_json_file.is_file():
+                    print('Removing SRA directory')
+                    shutil.rmtree(my_sra_dir)
+                    if check_positive(accession) == "NEGATIVE":
+                        print(accession + " is Negative: deleting")
+                        os.remove(my_json_file)
+                        if my_fastq_file.is_file():
+                            os.remove(my_fastq_file)
                         else:
-                            print('Neither Negative nor Positive')
+                            os.remove(my_fastq_1_file)
+                            os.remove(my_fastq_2_file)
+                        os.remove(my_html_file)
+                    elif check_positive(accession) == "POSITIVE":
+                        print(accession + " is Positive")
+                        os.remove(my_json_file)
+                        os.remove(my_sam_file)
+                        os.remove(my_sam_file)
+                        if my_fastq_file.is_file():
+                            os.remove(my_fastq_file)
+                        elif my_fastq_1_file.is_file() and my_fastq_2_file.is_file():
+                            os.remove(my_fastq_2_file)
+                        else:
+                            pass
                     else:
-                        print(my_json_file.name + " doesn't exist. Generate using by downloading sra and converting using --infile")
+                        print('Neither Negative nor Positive')
+                else:
+                    print(my_json_file.name + " doesn't exist. Generate using by downloading sra and converting using --infile")
