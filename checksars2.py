@@ -2,7 +2,6 @@ import os
 import shutil
 import argparse
 
-from traceback import print_exc
 from functions import *
 from allelecount import *
 from pathlib import Path
@@ -148,6 +147,8 @@ if args.infile:
             my_bcf_file = Path(accession + ".bcf")
             my_html_file = Path(accession + ".html")
             my_bam_file = Path(accession + ".bam")
+            my_bam_file_sorted = Path(accession + ".sorted.bam")
+            my_bam_file_index = Path(accession + ".sorted.bam.bai")
 
         # DOWNLOAD: files, check if positive for SARS-CoV-2
             if args.download:
@@ -159,32 +160,40 @@ if args.infile:
                     else:
                         pass
                     fastv_func(accession, my_fastq_1_file, my_fastq_2_file)
-                    print(1)
+                    # print(1)
                 elif (my_fastq_file.is_file()
-                      and my_json_file.is_file() is False):
+                        and my_json_file.is_file() is False):
                     fastv_func(accession)
-                    print(2)
-                elif (my_fastq_file.is_file() is False
-                      and my_fastq_1_file.is_file() is False
+                    # print(2)
+                elif (my_fastq_file.is_file()
+                      and my_fastq_1_file.is_file()
                       and my_sra_file.is_file() is False):
                     fastq_exists(accession)
-                    print(3)
+                    # print(3)
                 elif (my_json_file.is_file()
                       and my_fastq_1_file.is_file()
                       and my_fastq_file.is_file()):
-                    print('All downloads complete')
+                    print('JSON and FASTQ files exist')
                 elif (my_sra_file.is_file()
                       and my_fastq_1_file.is_file() is False
                       and my_fastq_file.is_file() is False):
                     fastq_func(my_sra_file)
-                    print(4)
+                    # print(4)
+                elif (my_sra_file.is_file()
+                      and my_fastq_file.is_file()
+                      and my_fastq_1_file.is_file() is False):
+                    fastv_func(accession)
                 elif (my_sra_file.is_file()
                       and my_fastq_1_file.is_file()
                       and my_fastq_file.is_file()
                       and my_sam_file.is_file()):
                     continue
+                elif (my_fastq_file.is_file() is False
+                      and my_fastq_1_file.is_file() is False
+                      and my_sra_file.is_file() is False):
+                    fastq_exists(accession)
                 else:
-                    print('Download logic pass')
+                    # print(5)
                     pass
 
         # BOWTIE
@@ -214,35 +223,44 @@ if args.infile:
 
         # DELETE
             elif args.delete:
-                os.remove(my_sam_file)
-                os.remove(my_bcf_file)
-
+                try:
+                    os.remove(my_sam_file)
+                    os.remove(my_bcf_file)
+                except FileNotFoundError as ex:
+                    print(ex)
         # CHECK IF SRA IS POSITIVE OR NEGATIVE
             elif args.check:
                 if my_json_file.is_file():
-                    print('Removing SRA directory')
-                    shutil.rmtree(my_sra_dir)
-                    if check_positive(accession) == "NEGATIVE":
-                        print(accession + " is Negative: deleting")
-                        os.remove(my_json_file)
-                        if my_fastq_file.is_file():
-                            os.remove(my_fastq_file)
-                        else:
-                            os.remove(my_fastq_1_file)
-                            os.remove(my_fastq_2_file)
-                        os.remove(my_html_file)
-                    elif check_positive(accession) == "POSITIVE":
-                        print(accession + " is Positive")
-                        os.remove(my_json_file)
-                        os.remove(my_sam_file)
-                        os.remove(my_sam_file)
-                        if my_fastq_file.is_file():
-                            os.remove(my_fastq_file)
-                        elif my_fastq_1_file.is_file() and my_fastq_2_file.is_file():
-                            os.remove(my_fastq_2_file)
+                    try:
+                        shutil.rmtree(my_sra_dir)
+                        if check_positive(my_json_file) == "NEGATIVE":
+                            print(accession + " is Negative: deleting")
+                            delete_accession(args.infile.name, accession)
+                            os.remove(my_json_file)
+                            os.remove(my_html_file)
+                            os.remove(my_sam_file)
+                            os.remove(my_bam_file)
+                            os.remove(my_bcf_file)
+                            os.remove(my_bam_file_sorted)
+                            os.remove(my_bam_file_index)
+                            if my_fastq_file.is_file():
+                                os.remove(my_fastq_file)
+                            else:
+                                os.remove(my_fastq_1_file)
+                                os.remove(my_fastq_2_file)
+                        elif check_positive(my_json_file) == "POSITIVE" and mean_depth(my_json_file) <= 20.0:
+                            print(f'Removing file with low depth < 15: {accession}')
+                            delete_accession(args.infile.name, accession)
+                            os.remove(my_json_file)
+                            os.remove(my_html_file)
+                            os.remove(my_sam_file)
+                            os.remove(my_bam_file)
+                            os.remove(my_bcf_file)
+                            os.remove(my_bam_file_sorted)
+                            os.remove(my_bam_file_index)
                         else:
                             pass
-                    else:
-                        print('Neither Negative nor Positive')
+                    except FileNotFoundError as ex:
+                        print(ex)
                 else:
-                    print(my_json_file.name + " doesn't exist. Generate using by downloading sra and converting using --infile")
+                    pass

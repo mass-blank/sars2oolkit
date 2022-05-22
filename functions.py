@@ -9,13 +9,8 @@ from pathlib import Path
 def call_mutations(accession):
     args = f"bcftools mpileup -d 150000 -Ou -f SARS-CoV-2_reference.fasta {accession}.sorted.bam | bcftools call -mv -Ob -o {accession}.bcf"
     subprocess.run(args, shell=True)
-    # args2 = "bcftools view - i '%QUAL>=15' - H calls.bcf
-    # process all alleles no file: bcftools mpileup  -a AD -Ou -f SARS-CoV-2_reference.fasta SRR12019375.sorted.bam | bcftools call -mA
 
 
-# def gen_pileup(accession, nt_start=None, nt_stop=None):
-#     args = f"samtools mpileup -d 150000 -r NC_045512.2:{nt_start}-{nt_stop} -o {accession}_{nt_start}-{nt_stop}_pileup.txt {accession}.sorted.bam"
-#     subprocess.run(args, shell=True)
 def gen_pileup(accession):
     args = f"samtools mpileup -d 150000 -o {accession}_pileup.txt {accession}.sorted.bam"
     subprocess.run(args, shell=True)
@@ -37,7 +32,7 @@ def fastq_exists(accession):
             infile = Path(accession + "/" + re_result[0])
             outfile = Path(accession + ".fastq.gz")
             os.rename(infile, os.path.join(current_dir, outfile))
-            return f"{outfile.name} has finished downloading"
+            print(f"{outfile.name} has finished downloading")
         elif len(re_result) == 2:
             infile1 = Path(accession + "/" + re_result[0])
             infile2 = Path(accession + "/" + re_result[1])
@@ -45,7 +40,7 @@ def fastq_exists(accession):
             outfile2 = Path(accession + "_2.fastq.gz")
             os.rename(infile1, os.path.join(current_dir, outfile1))
             os.rename(infile2, os.path.join(current_dir, outfile2))
-            return outfile1.name + ' and ' + outfile2.name + 'have finished downloading'
+            print(f"{outfile1.name} and {outfile2.name} have finished downloading")
         elif not re_result:
             subprocess.run(['prefetch', accession])
         else:
@@ -127,10 +122,26 @@ def fastv_func(accession, fastq_file_1=None, fastq_file_2=None):
         subprocess.run(args, shell=True)
 
 
-def check_positive(accession):
-    with open(accession + ".json", "r") as file:
+def check_positive(json_file):
+    with open(json_file, "r") as file:
         data = json.loads(file.read())
-        return(data["kmer_detection_result"]["result"])
+        return (data["kmer_detection_result"]["result"])
+
+
+def delete_accession(file, accession):
+    with open(file, 'r+') as file:
+        lines = file.readlines()
+        file.seek(0)
+        for line in lines:
+            if accession not in line.strip('\n'):
+                file.write(line)
+        file.truncate()
+
+
+def mean_depth(json_file):
+    with open(json_file, "r") as file:
+        data = json.loads(file.read())
+        return float(data["kmer_detection_result"]["mean_coverage"])
 
 
 def is_full():
