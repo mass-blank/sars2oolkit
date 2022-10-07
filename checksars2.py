@@ -5,7 +5,7 @@ import argparse
 from functions import *
 from allelecount import *
 from pathlib import Path
-
+from conserved import *
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -30,6 +30,11 @@ if __name__ == '__main__':
         action="store_true",
         help="Check if the SRA's are Positive or Negative")
     parser.add_argument(
+        '--depth',
+        type=float,
+        default=15.00,
+        help="Mean depth for acceptable positive.")
+    parser.add_argument(
         '-b',
         '--bowtie',
         action='store_true',
@@ -42,8 +47,15 @@ if __name__ == '__main__':
     parser.add_argument(
         '-a',
         '--alleles',
-        type=str,
-        help='You must pass the nucleotide range.   Example:    --alleles 12345-54321')
+        action='store_true',
+        # type=str,
+        help='You must pass the nucleotides seperated by commas.   Example:    --alleles 12345,54321')
+    parser.add_argument(
+        '-t',
+        '--total',
+        action='store_true',
+        help='generates all alleles'
+    )
     parser.add_argument(
         '-D',
         '--delete',
@@ -54,12 +66,29 @@ if __name__ == '__main__':
 
 my_mutations_text_file = Path(args.infile.name + "_mutations.txt")
 
+if args.total:
+    with open(args.infile.name) as f:
+        lines = [line.rstrip() for line in f]
+        for accession in lines:
+
+            # INPUT
+            my_sam_mpileup_file = Path(f"{accession}_pileup.txt")
+            # OUTPUT
+            my_alleles_text_file = Path(f"{accession}_NT.txt")
+
+            if my_alleles_text_file.is_file():
+                # PRINT FORMATTED OUTPUT
+                print(f"\n{accession} \tNT\tA\tC\tG\tT\tN\ta\tc\tg\tt\tn\tdel\tdot\tcomma")
+
+                with open(my_alleles_text_file, 'r') as infile:
+                    lines = [line.rstrip() for line in infile]
+                    for line in lines:
+                        print(line)
+
 if args.infile and args.alleles:
 
-    allele = args.alleles
-    alleles = allele.split(',')
-    print(alleles)
-
+    # alleles = args.alleles.split(',')
+    alleles = conserved()
     with open(args.infile.name) as f:
         lines = [line.rstrip() for line in f]
         for accession in lines:
@@ -77,8 +106,8 @@ if args.infile and args.alleles:
                     lines = [line.rstrip() for line in infile]
                     for line in lines:
                         split_line = line.split('\t')
-                        for a in alleles:
-                            if split_line[1].startswith(a):
+                        for allele in alleles:
+                            if split_line[1].startswith(allele):
                                 print(line)
 
             elif my_sam_mpileup_file.is_file():
@@ -160,16 +189,13 @@ if args.infile:
                     else:
                         pass
                     fastv_func(accession, my_fastq_1_file, my_fastq_2_file)
-                    # print(1)
                 elif (my_fastq_file.is_file()
                         and my_json_file.is_file() is False):
                     fastv_func(accession)
-                    # print(2)
                 elif (my_fastq_file.is_file()
                       and my_fastq_1_file.is_file()
                       and my_sra_file.is_file() is False):
                     fastq_exists(accession)
-                    # print(3)
                 elif (my_json_file.is_file()
                       and my_fastq_1_file.is_file()
                       and my_fastq_file.is_file()):
@@ -178,7 +204,6 @@ if args.infile:
                       and my_fastq_1_file.is_file() is False
                       and my_fastq_file.is_file() is False):
                     fastq_func(my_sra_file)
-                    # print(4)
                 elif (my_sra_file.is_file()
                       and my_fastq_file.is_file()
                       and my_fastq_1_file.is_file() is False):
@@ -193,7 +218,6 @@ if args.infile:
                       and my_sra_file.is_file() is False):
                     fastq_exists(accession)
                 else:
-                    # print(5)
                     pass
 
         # BOWTIE
@@ -212,7 +236,7 @@ if args.infile:
             elif args.variants:
                 if os.stat(my_mutations_text_file).st_size > 0:
                     with open(my_mutations_text_file, 'r') as mutations_file:
-                        for line in mutations:
+                        for line in mutations_file:
                             print(line)
                 elif my_bcf_file.is_file() is False:
                     call_mutations(accession)
@@ -248,8 +272,8 @@ if args.infile:
                             else:
                                 os.remove(my_fastq_1_file)
                                 os.remove(my_fastq_2_file)
-                        elif check_positive(my_json_file) == "POSITIVE" and mean_depth(my_json_file) <= 20.0:
-                            print(f'Removing file with low depth < 15: {accession}')
+                        elif check_positive(my_json_file) == "POSITIVE" and mean_depth(my_json_file) <= args.depth:
+                            print(f'Removing file with low depth < {mean_depth}: {accession}')
                             delete_accession(args.infile.name, accession)
                             os.remove(my_json_file)
                             os.remove(my_html_file)
