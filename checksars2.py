@@ -15,11 +15,6 @@ if __name__ == '__main__':
         help='Input SRA accession .txt file',
         type=argparse.FileType('r'))
     parser.add_argument(
-        '-s',
-        '--single',
-        help='Input single SRA',
-        type=str)
-    parser.add_argument(
         '-d',
         '--download',
         action="store_true",
@@ -127,40 +122,6 @@ if args.infile and args.alleles:
                 print(f'{accession}: pileup created')
             else:
                 pass
-if args.single:
-    my_sra_dir = Path(args.single + "/")
-    my_sra_file = Path(args.single + "/" + args.single + ".sra")
-    my_fastq_file = Path(args.single + ".fastq.gz")
-    my_fastq_1_file = Path(args.single + "_1.fastq.gz")
-    my_fastq_2_file = Path(args.single + "_2.fastq.gz")
-    my_json_file = Path(args.single + ".json")
-    my_sam_file = Path(args.single + ".sam")
-    my_bcf_file = Path(args.single + ".bcf")
-    my_html_file = Path(args.single + ".html")
-    my_bam_file = Path(args.single + ".bam")
-    file_variant = open(args.single + '_mutations.txt', 'w+')
-    if my_sra_file.is_file() is False:
-        fetch_func(args.single + '.sra')
-        fastq_func(my_sra_file)
-    elif my_fastq_file.is_file():
-        fastv_func(args.single)
-        bow_tie(args.single)
-        sam_tools_view(args.single)
-        sam_tools_sort(args.single)
-        sam_tools_index(args.single)
-        call_mutations(args.single)
-        file_variant.write(view_mutations(args.single).stdout)
-    elif my_fastq_1_file.is_file() and my_fastq_2_file.is_file():
-        fastv_func(args.single, my_fastq_1_file, my_fastq_2_file)
-        bow_tie(args.single, my_fastq_1_file, my_fastq_2_file)
-        sam_tools_view(args.single)
-        sam_tools_sort(args.single)
-        sam_tools_index(args.single)
-        call_mutations(args.single)
-        file_variant.write(view_mutations(args.single).stdout)
-    else:
-        print('Exists')
-
 
 if args.infile:
     with open(my_mutations_text_file.name, 'w+') as file_variant, open(args.infile.name, 'r') as file_accession:

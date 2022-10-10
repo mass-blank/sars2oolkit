@@ -31,7 +31,6 @@ fasta = list(SeqIO.parse(FILE_NAME, format='fasta'))
 seqs = {}
 for entry in fasta:
     seqs[entry.id] = entry
-
  
 # numerate nucleotides
 def conserved():
@@ -71,17 +70,3 @@ def conserved():
             countA = countC = countG = countT = 0
             nucleotide += 1
     return conserved_list
-
-# conserved()
-def main():
-    import cProfile
-    import pstats
-    with cProfile.Profile() as pr:
-        conserved()
-
-    stats = pstats.Stats(pr)
-    stats.sort_stats(pstats.SortKey.TIME)
-    stats.print_stats() 
-
-if __name__ == '__main__':
-    main()
