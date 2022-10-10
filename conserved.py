@@ -1,10 +1,12 @@
+from functools import cache
 from Bio import SeqIO
 import numpy as np
+
 from pathlib import Path
 
 # Path to aligned fasta file
 FILE_NAME = Path("/Users/nazar/SARS-CoV-2/sarbeco_family_aligned.fasta")
-LIMIT = 24
+LIMIT = 16
 REF_GENOME = "NC_045512.2"
 np.seterr(divide='ignore', invalid='ignore')
 
@@ -31,7 +33,7 @@ fasta = list(SeqIO.parse(FILE_NAME, format='fasta'))
 seqs = {}
 for entry in fasta:
     seqs[entry.id] = entry
- 
+
 # numerate nucleotides
 def conserved():
     position_legend = {'a': 0, 'c': 1, 'g': 2, 't': 3}
@@ -63,10 +65,11 @@ def conserved():
                 if item[0] >= LIMIT and reference != '-':
                     check_ref_nucleotide = position_legend[reference]
                     if check_ref_nucleotide != i:
-                        conserved_list.append(str(ungapped_pos(seqs[REF_GENOME].seq, nucleotide)))
+                        conserved_list.append([int(ungapped_pos(seqs[REF_GENOME].seq, nucleotide)), i])
                         # s = str(f"POS:\t{ungapped_pos(seqs[REF_GENOME].seq, nucleotide)}\tconserved\tREF: {str.capitalize(reference)}\tU_GAP:{nucleotide}\n")
                         # print(s)
 
             countA = countC = countG = countT = 0
             nucleotide += 1
+
     return conserved_list
