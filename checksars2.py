@@ -73,6 +73,20 @@ class bcolors:
     BOLD = "\033[1m"
     UNDERLINE = "\033[4m"
 
+class Accession:
+    def __init__(self, accession):
+        my_sra_dir = Path(accession + "/")
+        my_sra_file = Path(accession + "/" + accession + ".sra")
+        my_fastq_file = Path(accession + ".fastq.gz")
+        my_fastq_1_file = Path(accession + "_1.fastq.gz")
+        my_fastq_2_file = Path(accession + "_2.fastq.gz")
+        my_json_file = Path(accession + ".json")
+        my_sam_file = Path(accession + ".sam")
+        my_bcf_file = Path(accession + ".bcf")
+        my_html_file = Path(accession + ".html")
+        my_bam_file = Path(accession + ".bam")
+        my_bam_file_sorted = Path(accession + ".sorted.bam")
+        my_bam_file_index = Path(accession + ".sorted.bam.bai")
 
 if args.infile.name is not None:
     my_mutations_text_file = Path(args.infile.name + "_mutations.txt")
