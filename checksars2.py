@@ -74,11 +74,6 @@ class bcolors:
     UNDERLINE = "\033[4m"
 
 
-class Accession:
-    def __init__(self, accession):
-        pass
-
-
 if args.infile.name is not None:
     my_mutations_text_file = Path(args.infile.name + "_mutations.txt")
 
