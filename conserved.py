@@ -3,10 +3,8 @@ from pathlib import Path
 import numpy as np
 from Bio import SeqIO
 
-from checksars2 import args
-
 # Path to aligned fasta file
-FILE_NAME = Path(args.aligned_file.name)
+FILE_NAME = Path('sarbeco_family_aligned.fasta')
 LIMIT = 20
 REF_GENOME = "NC_045512.2"
 np.seterr(divide='ignore', invalid='ignore')

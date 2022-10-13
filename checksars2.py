@@ -51,13 +51,7 @@ if __name__ == "__main__":
         "--alleles",
         action="store_true",
         # type=str,
-        help="You must pass the nucleotides seperated by commas.   Example:    --alleles 12345,54321",
-    )
-    parser.add_argument(
-        "-A",
-        "--aligned_file",
-        type=str,
-        help="Fasta aligned Sarbecovirus file"
+        help="This function generates alleles for conserved positions",
     )
     parser.add_argument(
         "-t", "--total", action="store_true", help="generates all alleles"
