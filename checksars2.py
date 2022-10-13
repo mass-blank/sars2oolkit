@@ -91,7 +91,7 @@ class Accession:
         self.my_sam_mpileup_file = Path(f"{accession}_pileup.txt")
 
 
-ACC_RANGE = 1080
+ACC_RANGE = 1230
 
 if args.infile.name is not None:
     my_mutations_text_file = Path(args.infile.name + "_mutations.txt")
@@ -197,7 +197,7 @@ if args.infile:
                     fastv_func(accession, acc.my_fastq_1_file,
                                acc.my_fastq_2_file)
                 elif (acc.my_fastq_file.is_file() and acc.my_json_file.is_file() is False):
-                    # fastv_func(accession)
+                    fastv_func(accession)
                     continue
                 elif (acc.my_fastq_file.is_file() and acc.my_fastq_1_file.is_file() and acc.my_sra_file.is_file() is False):
                     fastq_exists(accession)
@@ -206,7 +206,7 @@ if args.infile:
                 elif (acc.my_sra_file.is_file() and acc.my_fastq_1_file.is_file() is False and acc.my_fastq_file.is_file() is False):
                     fastq_func(acc.my_sra_file)
                 elif (acc.my_sra_file.is_file() and acc.my_fastq_file.is_file() and acc.my_fastq_1_file.is_file() is False):
-                    # fastv_func(accession)
+                    fastv_func(accession)
                     continue
                 elif (acc.my_sra_file.is_file() and acc.my_fastq_1_file.is_file() and acc.my_fastq_file.is_file() and acc.my_sam_file.is_file()):
                     continue
