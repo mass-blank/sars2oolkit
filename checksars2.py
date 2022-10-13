@@ -8,7 +8,6 @@ import numpy as np
 import pandas as pd
 
 from allelecount import read_pileup_write_allele
-from conserved import conserved
 from functions import *
 
 if __name__ == "__main__":
@@ -190,8 +189,9 @@ if args.infile and args.alleles:
 if args.infile:
     with open(my_mutations_text_file.name, "w+") as file_variant, open(args.infile.name, "r") as file_accession:
         lines = [line.rstrip() for line in file_accession]
-        for accession in lines:
+        for idx, accession in enumerate(lines):
             acc = Accession(accession)
+            print(f"{idx}/{len(lines)}")
             # DOWNLOAD: files, check if positive for SARS-CoV-2
             if args.download:
                 if (acc.my_fastq_1_file.is_file() and acc.my_fastq_2_file.is_file() and acc.my_json_file.is_file() is False):
