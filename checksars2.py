@@ -91,7 +91,7 @@ class Accession:
         self.my_sam_mpileup_file = Path(f"{accession}_pileup.txt")
 
 
-ACC_RANGE = 1230
+ACC_RANGE = 200
 
 if args.infile.name is not None:
     my_mutations_text_file = Path(args.infile.name + "_mutations.txt")
@@ -113,23 +113,20 @@ if args.total:
                         print(line)
 
 if args.infile and args.alleles:
-
-    # alleles = args.alleles.split(',')
     alleles = conserved()
-    # print(alleles)
     legend = ["a", "c", "g", "t"]
     data = defaultdict(list)
     print(alleles)
     with open(args.infile.name) as infile:
         read_lines = [line_infile.rstrip() for line_infile in infile]
-        for idx, accession in enumerate(read_lines[0:ACC_RANGE]):
+        for idx, accession in enumerate(read_lines):
             acc = Accession(accession)
             if acc.my_alleles_text_file.is_file() and acc.my_sam_mpileup_file.is_file():
-                # PRINT FORMATTED OUTPUT
-                print(f"{str(idx)}/{str(len(read_lines[0:ACC_RANGE]))}")
-                # print(
-                #     f"\n{accession} \tNT\tA\tC\tG\tT\tN\ta\tc\tg\tt\tn\tdel\tdot\tcomma"
-                # )
+                # Uncomment this if you want to know the progress
+                # print(f"{str(idx)}/{str(len(read_lines[0:ACC_RANGE]))}")
+                print(
+                    f"\n{accession} \tNT\tA\tC\tG\tT\tN\ta\tc\tg\tt\tn\tdel\tdot\tcomma"
+                )
                 try:
                     with open(acc.my_alleles_text_file, "r") as a_file:
                         lines = [line.rstrip() for line in a_file]
@@ -137,10 +134,10 @@ if args.infile and args.alleles:
                             split_line = line.split("\t")
                             for allele in alleles:
                                 if int(split_line[1]) == allele[0]:
-                                    countA = int(split_line[2])
-                                    countC = int(split_line[3])
-                                    countG = int(split_line[4])
-                                    countT = int(split_line[5])
+                                    countA = split_line[2]
+                                    countC = split_line[3]
+                                    countG = split_line[4]
+                                    countT = split_line[5]
                                     nt_array = np.array(
                                         [
                                             countA,
@@ -148,19 +145,18 @@ if args.infile and args.alleles:
                                             countG,
                                             countT
 
-                                        ]
+                                        ], dtype=np.float64
                                     )
                                     A, B = np.partition(nt_array, 1)[0:2]
                                     noise = A + B / 2
-                                    nt_array = np.array(
-                                        [countA - noise, countC - noise, countG - noise, countT - noise])
+                                    nt_array = nt_array - noise
                                     percentages = nt_array / \
                                         nt_array.sum(axis=0)
                                     allele_no_noise = percentages[allele[1]]
-                                    # print(line)
-                                    # print(
-                                    # f"\t\t{bcolors.OKGREEN}{allele[0]}{str.capitalize(legend[allele[1]])}{bcolors.ENDC}\t{percentages[0]:.2%}\t{percentages[1]:.2%}\t{percentages[2]:.2%}\t{percentages[3]:.2%}\n"
-                                    # )
+                                    print(line)
+                                    print(
+                                        f"\t\t{bcolors.OKGREEN}{allele[0]}{str.capitalize(legend[allele[1]])}{bcolors.ENDC}\t{percentages[0]:.2%}\t{percentages[1]:.2%}\t{percentages[2]:.2%}\t{percentages[3]:.2%}\n"
+                                    )
                                     data[accession].append(allele_no_noise)
                 except FileNotFoundError as ex:
                     print(f"{ex} File not found")
@@ -176,10 +172,8 @@ if args.infile and args.alleles:
     df = pd.DataFrame.from_dict(data, orient="index")
     df = df.sum(axis=1)
     df = df.sort_values(axis=0)
-    # more options can be specified also
     with pd.option_context('display.max_rows', None, 'display.max_columns', None):
         print(df)
-
 
 if args.infile:
     with open(my_mutations_text_file.name, "w+") as file_variant, open(args.infile.name, "r") as file_accession:
@@ -231,7 +225,7 @@ if args.infile:
                     sam_tools_view(accession)
                     sam_tools_sort(accession)
                     sam_tools_index(accession)
-                elif (acc.my_fastq_file.is_file() and acc.my_sam_file.is_file()) and (
+                elif (acc.my_fastq_file.is_file() and acc.my_sam_file.is_file()) or (
                     acc.my_fastq_1_file.is_file() and acc.my_sam_file.is_file()
                 ):
                     print("FASTQ and .SAM files already exist. Proceed to next step.")

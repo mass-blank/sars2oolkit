@@ -4,8 +4,8 @@ import numpy as np
 from Bio import SeqIO
 
 # Path to aligned fasta file
-FILE_NAME = Path('sarbeco_family_aligned.fasta')
-LIMIT = 20
+FILE_NAME = Path('../GitHub/sars2oolkit/sarbeco_family_aligned.fasta')
+LIMIT = 23
 REF_GENOME = "NC_045512.2"
 np.seterr(divide='ignore', invalid='ignore')
 
@@ -48,34 +48,30 @@ def conserved():
     countT = 0
     nucleotide = 1
     conserved_list = []
-    with open('conserved.txt', 'w') as file:
-        while nucleotide <= len(seqs[REF_GENOME].seq):
-            for entry in fasta:
-                nt = entry.seq[nucleotide-1]
-                if nt != '-':
-                    if nt == 'a':
-                        countA += 1
-                    elif nt == 'c':
-                        countC += 1
-                    elif nt == 'g':
-                        countG += 1
-                    elif nt == 't':
-                        countT += 1
-            data = np.array([countA, countC, countG, countT])
-            percentages = data/data.sum(axis=0)
-            out = list(zip(data, percentages))
+    while nucleotide <= len(seqs[REF_GENOME].seq):
+        for entry in fasta:
+            nt = entry.seq[nucleotide-1]
+            if nt != '-':
+                if nt == 'a':
+                    countA += 1
+                elif nt == 'c':
+                    countC += 1
+                elif nt == 'g':
+                    countG += 1
+                elif nt == 't':
+                    countT += 1
+        data = np.array([countA, countC, countG, countT])
+        percentages = data/data.sum(axis=0)
+        out = list(zip(data, percentages))
 
-            for i, item in enumerate(out):
-                reference = seqs[REF_GENOME].seq[nucleotide-1]
-                if item[0] >= LIMIT and reference != '-':
-                    check_ref_nucleotide = position_legend[reference]
-                    if check_ref_nucleotide != i:
-                        conserved_list.append(
-                            [int(ungapped_pos(seqs[REF_GENOME].seq, nucleotide)), i])
-                        # s = str(f"POS:\t{ungapped_pos(seqs[REF_GENOME].seq, nucleotide)}\tconserved\tREF: {str.capitalize(reference)}\tU_GAP:{nucleotide}\n")
-                        # print(s)
-
-            countA = countC = countG = countT = 0
-            nucleotide += 1
+        for i, item in enumerate(out):
+            reference = seqs[REF_GENOME].seq[nucleotide-1]
+            if item[0] >= LIMIT and reference != '-':
+                check_ref_nucleotide = position_legend[reference]
+                if check_ref_nucleotide != i:
+                    conserved_list.append(
+                        [int(ungapped_pos(seqs[REF_GENOME].seq, nucleotide)), i])
+        countA = countC = countG = countT = 0
+        nucleotide += 1
 
     return conserved_list
