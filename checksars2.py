@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 
 from allelecount import read_pileup_write_allele
+from conserved import conserved
 from functions import *
 
 if __name__ == "__main__":
