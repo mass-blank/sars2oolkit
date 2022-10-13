@@ -56,18 +56,24 @@ def Base_Counter(InputRow):
 
             if (currentIndex + 4) <= len(InputList[4]):
                 if InputList[4][currentIndex + 1: currentIndex + 4].isnumeric() is True:
-                    IndelDeterminant = int(InputList[4][currentIndex + 1: currentIndex + 4]) + 3
+                    IndelDeterminant = int(
+                        InputList[4][currentIndex + 1: currentIndex + 4]) + 3
                 elif InputList[4][currentIndex + 1: currentIndex + 3]. isnumeric() is True:
-                    IndelDeterminant = int(InputList[4][currentIndex + 1: currentIndex + 3]) + 2
+                    IndelDeterminant = int(
+                        InputList[4][currentIndex + 1: currentIndex + 3]) + 2
                 elif InputList[4][currentIndex + 1: currentIndex + 2].isnumeric() is True:
-                    IndelDeterminant = int(InputList[4][currentIndex + 1: currentIndex + 2]) + 1
+                    IndelDeterminant = int(
+                        InputList[4][currentIndex + 1: currentIndex + 2]) + 1
             elif (currentIndex + 3) <= len(InputList[4]):
                 if InputList[4][currentIndex + 1: currentIndex + 3]. isnumeric() is True:
-                    IndelDeterminant = int(InputList[4][currentIndex + 1: currentIndex + 3]) + 2
+                    IndelDeterminant = int(
+                        InputList[4][currentIndex + 1: currentIndex + 3]) + 2
                 elif InputList[4][currentIndex + 1: currentIndex + 2].isnumeric() is True:
-                    IndelDeterminant = int(InputList[4][currentIndex + 1: currentIndex + 2]) + 1
+                    IndelDeterminant = int(
+                        InputList[4][currentIndex + 1: currentIndex + 2]) + 1
 
-            IndelHolder.append(InputList[4][currentIndex:currentIndex + IndelDeterminant + 1])
+            IndelHolder.append(
+                InputList[4][currentIndex:currentIndex + IndelDeterminant + 1])
             continue
 
         if Strholder == '-':
@@ -79,18 +85,24 @@ def Base_Counter(InputRow):
 
             if (currentIndex + 4) <= len(InputList[4]):
                 if InputList[4][currentIndex + 1: currentIndex + 4].isnumeric() is True:
-                    IndelDeterminant = int(InputList[4][currentIndex + 1: currentIndex + 4]) + 3
+                    IndelDeterminant = int(
+                        InputList[4][currentIndex + 1: currentIndex + 4]) + 3
                 elif InputList[4][currentIndex + 1: currentIndex + 3]. isnumeric() is True:
-                    IndelDeterminant = int(InputList[4][currentIndex + 1: currentIndex + 3]) + 2
+                    IndelDeterminant = int(
+                        InputList[4][currentIndex + 1: currentIndex + 3]) + 2
                 elif InputList[4][currentIndex + 1: currentIndex + 2].isnumeric() is True:
-                    IndelDeterminant = int(InputList[4][currentIndex + 1: currentIndex + 2]) + 1
+                    IndelDeterminant = int(
+                        InputList[4][currentIndex + 1: currentIndex + 2]) + 1
             elif (currentIndex + 3) <= len(InputList[4]):
                 if InputList[4][currentIndex + 1: currentIndex + 3]. isnumeric() is True:
-                    IndelDeterminant = int(InputList[4][currentIndex + 1: currentIndex + 3]) + 2
+                    IndelDeterminant = int(
+                        InputList[4][currentIndex + 1: currentIndex + 3]) + 2
                 elif InputList[4][currentIndex + 1: currentIndex + 2].isnumeric() is True:
-                    IndelDeterminant = int(InputList[4][currentIndex + 1: currentIndex + 2]) + 1
+                    IndelDeterminant = int(
+                        InputList[4][currentIndex + 1: currentIndex + 2]) + 1
 
-            IndelHolder.append(InputList[4][currentIndex: currentIndex + len(str(IndelDeterminant)) + 1])
+            IndelHolder.append(
+                InputList[4][currentIndex: currentIndex + len(str(IndelDeterminant)) + 1])
             continue
 
         CleanString += Strholder
@@ -132,7 +144,8 @@ def Base_Counter(InputRow):
 
     # Internal Check - Throws Out Error (NOT STD-IN/OUT Compatible: Should break pipeline)
     InternalCounter = 0
-    InternalCounter = bigA + bigC + bigG + bigT + bigN + smallA + smallC + smallG + smallT + smallN + delBase + DOT + COMMA
+    InternalCounter = bigA + bigC + bigG + bigT + bigN + smallA + \
+        smallC + smallG + smallT + smallN + delBase + DOT + COMMA
     reported_number = int(InputList[3])
     if InternalCounter != reported_number and (not (reported_number == 0 and delBase == 1)):
         print('Error at position: ' + InputList[1])
@@ -155,10 +168,21 @@ def Base_Counter(InputRow):
         FinalIndelHolder.append(tmpIndelString)
 
     # Return Output
-    FinalOutput = InputList[0] + '	' + InputList[1] + '	' + str(bigA) + '	' + str(bigC) + '	' + str(bigG) + '	' + str(bigT) + '	' + str(bigN) + '	' + str(DOT) + '	' + str(smallA) + '	' + str(smallC) + '	' + str(smallG) + '	' + str(smallT) + '	' + str(smallN) + '	' + str(COMMA) + '	' + str(countIn) + '	' + str(countDel) + '	' + ';'.join(FinalIndelHolder)
+    FinalOutput = InputList[0] + '	' + InputList[1] + '	' + str(bigA) + '	' + str(bigC) + '	' + str(bigG) + '	' + str(bigT) + '	' + str(bigN) + '	' + str(DOT) + '	' + str(
+        smallA) + '	' + str(smallC) + '	' + str(smallG) + '	' + str(smallT) + '	' + str(smallN) + '	' + str(COMMA) + '	' + str(countIn) + '	' + str(countDel) + '	' + ';'.join(FinalIndelHolder)
 
     return FinalOutput
 
+
+def read_pileup_write_allele(accession, input, output):
+    try:
+        with open(input, "r") as infile, open(output, "w") as outfile:
+            for line in infile:
+                generate_base = Base_Counter(line.strip())
+                outfile.write(generate_base + "\n")
+        print(f"{accession}: pileup created")
+    except FileNotFoundError as ex:
+        print(f"{ex}: File not found")
 
 # Windows
 # file_in = sys.argv[1]

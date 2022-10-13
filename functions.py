@@ -5,8 +5,6 @@ import shutil
 import subprocess
 from pathlib import Path
 
-from allelecount import *
-
 
 def call_mutations(accession):
     args = f"bcftools mpileup -d 150000 -Ou -f SARS-CoV-2_reference.fasta {accession}.sorted.bam | bcftools call -mv -Ob -o {accession}.bcf"
@@ -24,7 +22,8 @@ def gen_pileup(accession):
 
 
 def view_mutations(accession):
-    args = "bcftools query -f '" + accession + r" %REF%POS%ALT\n' " + accession + ".bcf"
+    args = "bcftools query -f '" + accession + \
+        r" %REF%POS%ALT\n' " + accession + ".bcf"
     return subprocess.run(args, shell=True, capture_output=True, text=True)
 
 
@@ -194,14 +193,3 @@ def is_full():
         return True
     else:
         return False
-
-
-def read_pileup_write_allele(accession, input, output):
-    try:
-        with open(input, "r") as infile, open(output, "w") as outfile:
-            for line in infile:
-                generate_base = Base_Counter(line.strip())
-                outfile.write(generate_base + "\n")
-        print(f"{accession}: pileup created")
-    except FileNotFoundError as ex:
-        print(f"{ex}: File not found")

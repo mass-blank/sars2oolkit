@@ -3,12 +3,11 @@ import os
 import shutil
 from collections import defaultdict
 from pathlib import Path
-from sre_constants import RANGE
 
 import numpy as np
 import pandas as pd
 
-from allelecount import *
+from allelecount import read_pileup_write_allele
 from conserved import conserved
 from functions import *
 
@@ -55,6 +54,12 @@ if __name__ == "__main__":
         help="You must pass the nucleotides seperated by commas.   Example:    --alleles 12345,54321",
     )
     parser.add_argument(
+        "-A",
+        "--aligned_file",
+        type=str,
+        help="Fasta aligned Sarbecovirus file"
+    )
+    parser.add_argument(
         "-t", "--total", action="store_true", help="generates all alleles"
     )
     parser.add_argument("-D", "--delete", action="store_true")
@@ -92,7 +97,7 @@ class Accession:
         self.my_sam_mpileup_file = Path(f"{accession}_pileup.txt")
 
 
-ACC_RANGE = 1085
+ACC_RANGE = 1080
 
 if args.infile.name is not None:
     my_mutations_text_file = Path(args.infile.name + "_mutations.txt")
@@ -120,26 +125,12 @@ if args.infile and args.alleles:
     # print(alleles)
     legend = ["a", "c", "g", "t"]
     data = defaultdict(list)
-
+    print(alleles)
     with open(args.infile.name) as infile:
         read_lines = [line_infile.rstrip() for line_infile in infile]
         for idx, accession in enumerate(read_lines[0:ACC_RANGE]):
             acc = Accession(accession)
-            if (
-                acc.my_sam_mpileup_file.is_file() is False
-                and acc.my_alleles_text_file.is_file() is False
-            ):
-                # GENERATE MPILEUP
-                gen_pileup(accession)
-                read_pileup_write_allele(
-                    accession, acc.my_sam_mpileup_file, acc.my_alleles_text_file
-                )
-            elif acc.my_sam_mpileup_file.is_file():
-                # THIS WRITES THE RANGE TO FILE
-                read_pileup_write_allele(
-                    accession, acc.my_sam_mpileup_file, acc.my_alleles_text_file
-                )
-            elif acc.my_alleles_text_file.is_file():
+            if acc.my_alleles_text_file.is_file() and acc.my_sam_mpileup_file.is_file():
                 # PRINT FORMATTED OUTPUT
                 print(f"{str(idx)}/{str(len(read_lines[0:ACC_RANGE]))}")
                 # print(
@@ -152,86 +143,77 @@ if args.infile and args.alleles:
                             split_line = line.split("\t")
                             for allele in alleles:
                                 if int(split_line[1]) == allele[0]:
+                                    countA = int(split_line[2])
+                                    countC = int(split_line[3])
+                                    countG = int(split_line[4])
+                                    countT = int(split_line[5])
                                     nt_array = np.array(
                                         [
-                                            int(split_line[2]),
-                                            int(split_line[3]),
-                                            int(split_line[4]),
-                                            int(split_line[5]),
+                                            countA,
+                                            countC,
+                                            countG,
+                                            countT
+
                                         ]
                                     )
-                                    percentages = nt_array / nt_array.sum(axis=0)
+                                    A, B = np.partition(nt_array, 1)[0:2]
+                                    noise = A + B / 2
+                                    nt_array = np.array(
+                                        [countA - noise, countC - noise, countG - noise, countT - noise])
+                                    percentages = nt_array / \
+                                        nt_array.sum(axis=0)
+                                    allele_no_noise = percentages[allele[1]]
                                     # print(line)
                                     # print(
                                     # f"\t\t{bcolors.OKGREEN}{allele[0]}{str.capitalize(legend[allele[1]])}{bcolors.ENDC}\t{percentages[0]:.2%}\t{percentages[1]:.2%}\t{percentages[2]:.2%}\t{percentages[3]:.2%}\n"
                                     # )
-                                    data[accession].append(percentages[allele[1]])
+                                    data[accession].append(allele_no_noise)
                 except FileNotFoundError as ex:
                     print(f"{ex} File not found")
-            else:
-                continue
-
+            elif (acc.my_sam_mpileup_file.is_file() is False and acc.my_alleles_text_file.is_file() is False):
+                # GENERATE MPILEUP
+                gen_pileup(accession)
+                read_pileup_write_allele(
+                    accession, acc.my_sam_mpileup_file, acc.my_alleles_text_file)
+            elif (acc.my_sam_mpileup_file.is_file() and acc.my_alleles_text_file.is_file() is False):
+                # THIS WRITES THE RANGE TO FILE
+                read_pileup_write_allele(
+                    accession, acc.my_sam_mpileup_file, acc.my_alleles_text_file)
     df = pd.DataFrame.from_dict(data, orient="index")
     df = df.sum(axis=1)
     df = df.sort_values(axis=0)
-    print(df)
+    # more options can be specified also
+    with pd.option_context('display.max_rows', None, 'display.max_columns', None):
+        print(df)
 
 
 if args.infile:
-    with open(my_mutations_text_file.name, "w+") as file_variant, open(
-        args.infile.name, "r"
-    ) as file_accession:
+    with open(my_mutations_text_file.name, "w+") as file_variant, open(args.infile.name, "r") as file_accession:
         lines = [line.rstrip() for line in file_accession]
         for accession in lines:
             acc = Accession(accession)
             # DOWNLOAD: files, check if positive for SARS-CoV-2
             if args.download:
-                if (
-                    acc.my_fastq_1_file.is_file()
-                    and acc.my_fastq_2_file.is_file()
-                    and acc.my_json_file.is_file() is False
-                ):
+                if (acc.my_fastq_1_file.is_file() and acc.my_fastq_2_file.is_file() and acc.my_json_file.is_file() is False):
                     if is_full():
                         shutil.rmtree(acc.my_sra_dir)
                     else:
                         pass
-                    fastv_func(accession, acc.my_fastq_1_file, acc.my_fastq_2_file)
-                elif (
-                    acc.my_fastq_file.is_file() and acc.my_json_file.is_file() is False
-                ):
+                    fastv_func(accession, acc.my_fastq_1_file,
+                               acc.my_fastq_2_file)
+                elif (acc.my_fastq_file.is_file() and acc.my_json_file.is_file() is False):
                     # fastv_func(accession)
                     continue
-                elif (
-                    acc.my_fastq_file.is_file()
-                    and acc.my_fastq_1_file.is_file()
-                    and acc.my_sra_file.is_file() is False
-                ):
+                elif (acc.my_fastq_file.is_file() and acc.my_fastq_1_file.is_file() and acc.my_sra_file.is_file() is False):
                     fastq_exists(accession)
-                elif (
-                    acc.my_json_file.is_file()
-                    and acc.my_fastq_1_file.is_file()
-                    and acc.my_fastq_file.is_file()
-                ):
+                elif (acc.my_json_file.is_file() and acc.my_fastq_1_file.is_file() and acc.my_fastq_file.is_file()):
                     print("JSON and FASTQ files exist")
-                elif (
-                    acc.my_sra_file.is_file()
-                    and acc.my_fastq_1_file.is_file() is False
-                    and acc.my_fastq_file.is_file() is False
-                ):
+                elif (acc.my_sra_file.is_file() and acc.my_fastq_1_file.is_file() is False and acc.my_fastq_file.is_file() is False):
                     fastq_func(acc.my_sra_file)
-                elif (
-                    acc.my_sra_file.is_file()
-                    and acc.my_fastq_file.is_file()
-                    and acc.my_fastq_1_file.is_file() is False
-                ):
+                elif (acc.my_sra_file.is_file() and acc.my_fastq_file.is_file() and acc.my_fastq_1_file.is_file() is False):
                     # fastv_func(accession)
                     continue
-                elif (
-                    acc.my_sra_file.is_file()
-                    and acc.my_fastq_1_file.is_file()
-                    and acc.my_fastq_file.is_file()
-                    and acc.my_sam_file.is_file()
-                ):
+                elif (acc.my_sra_file.is_file() and acc.my_fastq_1_file.is_file() and acc.my_fastq_file.is_file() and acc.my_sam_file.is_file()):
                     continue
                 elif (
                     acc.my_fastq_file.is_file() is False
@@ -306,8 +288,7 @@ if args.infile:
                             and mean_depth(acc.my_json_file) <= args.depth
                         ):
                             print(
-                                f"Removing file with low depth < {mean_depth}: {accession}"
-                            )
+                                f"Removing file with low depth < {mean_depth}: {accession}")
                             delete_accession(args.infile.name, accession)
                             os.remove(acc.my_json_file)
                             os.remove(acc.my_html_file)
