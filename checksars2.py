@@ -2,8 +2,8 @@ import argparse
 import os
 import shutil
 from collections import defaultdict
-from dataclasses import dataclass
 from pathlib import Path
+from sre_constants import RANGE
 
 import numpy as np
 import pandas as pd
@@ -73,20 +73,26 @@ class bcolors:
     BOLD = "\033[1m"
     UNDERLINE = "\033[4m"
 
+
 class Accession:
     def __init__(self, accession):
-        my_sra_dir = Path(accession + "/")
-        my_sra_file = Path(accession + "/" + accession + ".sra")
-        my_fastq_file = Path(accession + ".fastq.gz")
-        my_fastq_1_file = Path(accession + "_1.fastq.gz")
-        my_fastq_2_file = Path(accession + "_2.fastq.gz")
-        my_json_file = Path(accession + ".json")
-        my_sam_file = Path(accession + ".sam")
-        my_bcf_file = Path(accession + ".bcf")
-        my_html_file = Path(accession + ".html")
-        my_bam_file = Path(accession + ".bam")
-        my_bam_file_sorted = Path(accession + ".sorted.bam")
-        my_bam_file_index = Path(accession + ".sorted.bam.bai")
+        self.my_sra_dir = Path(f"{accession}/")
+        self.my_sra_file = Path(f"{accession}/{accession}.sra")
+        self.my_fastq_file = Path(accession + ".fastq.gz")
+        self.my_fastq_1_file = Path(accession + "_1.fastq.gz")
+        self.my_fastq_2_file = Path(accession + "_2.fastq.gz")
+        self.my_json_file = Path(accession + ".json")
+        self.my_sam_file = Path(accession + ".sam")
+        self.my_bcf_file = Path(accession + ".bcf")
+        self.my_html_file = Path(accession + ".html")
+        self.my_bam_file = Path(accession + ".bam")
+        self.my_bam_file_sorted = Path(accession + ".sorted.bam")
+        self.my_bam_file_index = Path(accession + ".sorted.bam.bai")
+        self.my_alleles_text_file = Path(f"{accession}_NT.txt")
+        self.my_sam_mpileup_file = Path(f"{accession}_pileup.txt")
+
+
+ACC_RANGE = 1085
 
 if args.infile.name is not None:
     my_mutations_text_file = Path(args.infile.name + "_mutations.txt")
@@ -95,19 +101,14 @@ if args.total:
     with open(args.infile.name) as f:
         lines = [line.rstrip() for line in f]
         for accession in lines:
-
-            # INPUT
-            my_sam_mpileup_file = Path(f"{accession}_pileup.txt")
-            # OUTPUT
-            my_alleles_text_file = Path(f"{accession}_NT.txt")
-
-            if my_alleles_text_file.is_file():
+            acc = Accession(accession)
+            if acc.my_alleles_text_file.is_file():
                 # PRINT FORMATTED OUTPUT
                 print(
                     f"\n{accession} \tNT\tA\tC\tG\tT\tN\ta\tc\tg\tt\tn\tdel\tdot\tcomma"
                 )
 
-                with open(my_alleles_text_file, "r") as infile:
+                with open(acc.my_alleles_text_file, "r") as infile:
                     lines = [line.rstrip() for line in infile]
                     for line in lines:
                         print(line)
@@ -122,18 +123,30 @@ if args.infile and args.alleles:
 
     with open(args.infile.name) as infile:
         read_lines = [line_infile.rstrip() for line_infile in infile]
-        for accession in read_lines:
-            # INPUT
-            my_sam_mpileup_file = Path(f"{accession}_pileup.txt")
-            # OUTPUT
-            my_alleles_text_file = Path(f"{accession}_NT.txt")
-            if my_alleles_text_file.is_file():
-                # PRINT FORMATTED OUTPUT
-                print(
-                    f"\n{accession} \tNT\tA\tC\tG\tT\tN\ta\tc\tg\tt\tn\tdel\tdot\tcomma"
+        for idx, accession in enumerate(read_lines[0:ACC_RANGE]):
+            acc = Accession(accession)
+            if (
+                acc.my_sam_mpileup_file.is_file() is False
+                and acc.my_alleles_text_file.is_file() is False
+            ):
+                # GENERATE MPILEUP
+                gen_pileup(accession)
+                read_pileup_write_allele(
+                    accession, acc.my_sam_mpileup_file, acc.my_alleles_text_file
                 )
+            elif acc.my_sam_mpileup_file.is_file():
+                # THIS WRITES THE RANGE TO FILE
+                read_pileup_write_allele(
+                    accession, acc.my_sam_mpileup_file, acc.my_alleles_text_file
+                )
+            elif acc.my_alleles_text_file.is_file():
+                # PRINT FORMATTED OUTPUT
+                print(f"{str(idx)}/{str(len(read_lines[0:ACC_RANGE]))}")
+                # print(
+                #     f"\n{accession} \tNT\tA\tC\tG\tT\tN\ta\tc\tg\tt\tn\tdel\tdot\tcomma"
+                # )
                 try:
-                    with open(my_alleles_text_file, "r") as a_file:
+                    with open(acc.my_alleles_text_file, "r") as a_file:
                         lines = [line.rstrip() for line in a_file]
                         for line in lines:
                             split_line = line.split("\t")
@@ -148,42 +161,13 @@ if args.infile and args.alleles:
                                         ]
                                     )
                                     percentages = nt_array / nt_array.sum(axis=0)
-                                    print(line)
-                                    print(
-                                        f"\t\t{bcolors.OKGREEN}{allele[0]}{str.capitalize(legend[allele[1]])}{bcolors.ENDC}\t{percentages[0]:.2%}\t{percentages[1]:.2%}\t{percentages[2]:.2%}\t{percentages[3]:.2%}\n"
-                                    )
+                                    # print(line)
+                                    # print(
+                                    # f"\t\t{bcolors.OKGREEN}{allele[0]}{str.capitalize(legend[allele[1]])}{bcolors.ENDC}\t{percentages[0]:.2%}\t{percentages[1]:.2%}\t{percentages[2]:.2%}\t{percentages[3]:.2%}\n"
+                                    # )
                                     data[accession].append(percentages[allele[1]])
                 except FileNotFoundError as ex:
                     print(f"{ex} File not found")
-            elif my_sam_mpileup_file.is_file():
-                # THIS WRITES THE RANGE TO FILE
-                try:
-                    with open(my_sam_mpileup_file, "r") as infile, open(
-                        my_alleles_text_file, "w"
-                    ) as outfile:
-                        for line in infile:
-                            output = Base_Counter(line.strip())
-                            outfile.write(output + "\n")
-                    print(f"{accession}: pileup created")
-                except FileNotFoundError as ex:
-                    print(f"{ex}: File not found")
-
-            elif (
-                my_sam_mpileup_file.is_file() is False
-                and my_alleles_text_file.is_file() is False
-            ):
-                # GENERATE MPILEUP
-                gen_pileup(accession)
-                try:
-                    with open(my_sam_mpileup_file, "r") as infile, open(
-                        my_alleles_text_file, "w"
-                    ) as outfile:
-                        for line in infile:
-                            output = Base_Counter(line.strip())
-                            outfile.write(output + "\n")
-                    print(f"{accession}: pileup created")
-                except FileNotFoundError as ex:
-                    print(f"{ex}: File not found")
             else:
                 continue
 
@@ -192,76 +176,67 @@ if args.infile and args.alleles:
     df = df.sort_values(axis=0)
     print(df)
 
+
 if args.infile:
     with open(my_mutations_text_file.name, "w+") as file_variant, open(
         args.infile.name, "r"
     ) as file_accession:
         lines = [line.rstrip() for line in file_accession]
         for accession in lines:
-            my_sra_dir = Path(accession + "/")
-            my_sra_file = Path(accession + "/" + accession + ".sra")
-            my_fastq_file = Path(accession + ".fastq.gz")
-            my_fastq_1_file = Path(accession + "_1.fastq.gz")
-            my_fastq_2_file = Path(accession + "_2.fastq.gz")
-            my_json_file = Path(accession + ".json")
-            my_sam_file = Path(accession + ".sam")
-            my_bcf_file = Path(accession + ".bcf")
-            my_html_file = Path(accession + ".html")
-            my_bam_file = Path(accession + ".bam")
-            my_bam_file_sorted = Path(accession + ".sorted.bam")
-            my_bam_file_index = Path(accession + ".sorted.bam.bai")
-
+            acc = Accession(accession)
             # DOWNLOAD: files, check if positive for SARS-CoV-2
             if args.download:
                 if (
-                    my_fastq_1_file.is_file()
-                    and my_fastq_2_file.is_file()
-                    and my_json_file.is_file() is False
+                    acc.my_fastq_1_file.is_file()
+                    and acc.my_fastq_2_file.is_file()
+                    and acc.my_json_file.is_file() is False
                 ):
                     if is_full():
-                        shutil.rmtree(my_sra_dir)
+                        shutil.rmtree(acc.my_sra_dir)
                     else:
                         pass
-                    fastv_func(accession, my_fastq_1_file, my_fastq_2_file)
-                elif my_fastq_file.is_file() and my_json_file.is_file() is False:
+                    fastv_func(accession, acc.my_fastq_1_file, acc.my_fastq_2_file)
+                elif (
+                    acc.my_fastq_file.is_file() and acc.my_json_file.is_file() is False
+                ):
                     # fastv_func(accession)
                     continue
                 elif (
-                    my_fastq_file.is_file()
-                    and my_fastq_1_file.is_file()
-                    and my_sra_file.is_file() is False
+                    acc.my_fastq_file.is_file()
+                    and acc.my_fastq_1_file.is_file()
+                    and acc.my_sra_file.is_file() is False
                 ):
                     fastq_exists(accession)
                 elif (
-                    my_json_file.is_file()
-                    and my_fastq_1_file.is_file()
-                    and my_fastq_file.is_file()
+                    acc.my_json_file.is_file()
+                    and acc.my_fastq_1_file.is_file()
+                    and acc.my_fastq_file.is_file()
                 ):
                     print("JSON and FASTQ files exist")
                 elif (
-                    my_sra_file.is_file()
-                    and my_fastq_1_file.is_file() is False
-                    and my_fastq_file.is_file() is False
+                    acc.my_sra_file.is_file()
+                    and acc.my_fastq_1_file.is_file() is False
+                    and acc.my_fastq_file.is_file() is False
                 ):
-                    fastq_func(my_sra_file)
+                    fastq_func(acc.my_sra_file)
                 elif (
-                    my_sra_file.is_file()
-                    and my_fastq_file.is_file()
-                    and my_fastq_1_file.is_file() is False
+                    acc.my_sra_file.is_file()
+                    and acc.my_fastq_file.is_file()
+                    and acc.my_fastq_1_file.is_file() is False
                 ):
                     # fastv_func(accession)
                     continue
                 elif (
-                    my_sra_file.is_file()
-                    and my_fastq_1_file.is_file()
-                    and my_fastq_file.is_file()
-                    and my_sam_file.is_file()
+                    acc.my_sra_file.is_file()
+                    and acc.my_fastq_1_file.is_file()
+                    and acc.my_fastq_file.is_file()
+                    and acc.my_sam_file.is_file()
                 ):
                     continue
                 elif (
-                    my_fastq_file.is_file() is False
-                    and my_fastq_1_file.is_file() is False
-                    and my_sra_file.is_file() is False
+                    acc.my_fastq_file.is_file() is False
+                    and acc.my_fastq_1_file.is_file() is False
+                    and acc.my_sra_file.is_file() is False
                 ):
                     fastq_exists(accession)
                 else:
@@ -269,13 +244,18 @@ if args.infile:
 
             # BOWTIE
             elif args.bowtie:
-                if my_bam_file.is_file() is False:
-                    bow_tie(accession, my_fastq_1_file, my_fastq_2_file, my_fastq_file)
+                if acc.my_bam_file.is_file() is False:
+                    bow_tie(
+                        accession,
+                        acc.my_fastq_1_file,
+                        acc.my_fastq_2_file,
+                        acc.my_fastq_file,
+                    )
                     sam_tools_view(accession)
                     sam_tools_sort(accession)
                     sam_tools_index(accession)
-                elif (my_fastq_file.is_file() and my_sam_file.is_file()) and (
-                    my_fastq_1_file.is_file() and my_sam_file.is_file()
+                elif (acc.my_fastq_file.is_file() and acc.my_sam_file.is_file()) and (
+                    acc.my_fastq_1_file.is_file() and acc.my_sam_file.is_file()
                 ):
                     print("FASTQ and .SAM files already exist. Proceed to next step.")
                 else:
@@ -287,9 +267,9 @@ if args.infile:
                     with open(my_mutations_text_file, "r") as mutations_file:
                         for line in mutations_file:
                             print(line)
-                elif my_bcf_file.is_file() is False:
+                elif acc.my_bcf_file.is_file() is False:
                     call_mutations(accession)
-                elif my_bcf_file.is_file():
+                elif acc.my_bcf_file.is_file():
                     file_variant.write(view_mutations(accession).stdout)
                 else:
                     pass
@@ -297,45 +277,45 @@ if args.infile:
             # DELETE
             elif args.delete:
                 try:
-                    os.remove(my_sam_file)
-                    os.remove(my_bcf_file)
+                    os.remove(acc.my_sam_file)
+                    os.remove(acc.my_bcf_file)
                 except FileNotFoundError as ex:
                     print(ex)
             # CHECK IF SRA IS POSITIVE OR NEGATIVE
             elif args.check:
-                if my_json_file.is_file():
+                if acc.my_json_file.is_file():
                     try:
-                        shutil.rmtree(my_sra_dir)
-                        if check_positive(my_json_file) == "NEGATIVE":
+                        shutil.rmtree(acc.my_sra_dir)
+                        if check_positive(acc.my_json_file) == "NEGATIVE":
                             print(accession + " is Negative: deleting")
                             delete_accession(args.infile.name, accession)
-                            os.remove(my_json_file)
-                            os.remove(my_html_file)
-                            os.remove(my_sam_file)
-                            os.remove(my_bam_file)
-                            os.remove(my_bcf_file)
-                            os.remove(my_bam_file_sorted)
-                            os.remove(my_bam_file_index)
-                            if my_fastq_file.is_file():
-                                os.remove(my_fastq_file)
+                            os.remove(acc.my_json_file)
+                            os.remove(acc.my_html_file)
+                            os.remove(acc.my_sam_file)
+                            os.remove(acc.my_bam_file)
+                            os.remove(acc.my_bcf_file)
+                            os.remove(acc.my_bam_file_sorted)
+                            os.remove(acc.my_bam_file_index)
+                            if acc.my_fastq_file.is_file():
+                                os.remove(acc.my_fastq_file)
                             else:
-                                os.remove(my_fastq_1_file)
-                                os.remove(my_fastq_2_file)
+                                os.remove(acc.my_fastq_1_file)
+                                os.remove(acc.my_fastq_2_file)
                         elif (
-                            check_positive(my_json_file) == "POSITIVE"
-                            and mean_depth(my_json_file) <= args.depth
+                            check_positive(acc.my_json_file) == "POSITIVE"
+                            and mean_depth(acc.my_json_file) <= args.depth
                         ):
                             print(
                                 f"Removing file with low depth < {mean_depth}: {accession}"
                             )
                             delete_accession(args.infile.name, accession)
-                            os.remove(my_json_file)
-                            os.remove(my_html_file)
-                            os.remove(my_sam_file)
-                            os.remove(my_bam_file)
-                            os.remove(my_bcf_file)
-                            os.remove(my_bam_file_sorted)
-                            os.remove(my_bam_file_index)
+                            os.remove(acc.my_json_file)
+                            os.remove(acc.my_html_file)
+                            os.remove(acc.my_sam_file)
+                            os.remove(acc.my_bam_file)
+                            os.remove(acc.my_bcf_file)
+                            os.remove(acc.my_bam_file_sorted)
+                            os.remove(acc.my_bam_file_index)
                         else:
                             pass
                     except FileNotFoundError as ex:
