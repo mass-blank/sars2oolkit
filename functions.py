@@ -3,7 +3,16 @@ import os
 import re
 import shutil
 import subprocess
+import xml.etree.ElementTree as ET
 from pathlib import Path
+
+
+def xml_parse(accession, search):
+    args = f"esummary -db sra -id {accession}"
+    myxml = subprocess.run(args, shell=True, capture_output=True, text=True)
+    myroot = ET.fromstring(myxml.stdout)
+    result = [result.text for result in myroot.findall(f'.//{search}')]
+    return result
 
 
 def call_mutations(accession):

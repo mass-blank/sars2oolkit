@@ -115,15 +115,7 @@ def Base_Counter(InputRow):
         InputList[4] = InputList[4].replace('$', '')
 
     # Base Count Var Initialization
-    bigA = 0
-    bigC = 0
-    bigG = 0
-    bigT = 0
-    smallA = 0
-    smallC = 0
-    smallG = 0
-    smallT = 0
-    delBase = 0
+    bigA = bigC = bigG = bigT = smallA = smallC = smallG = smallT = delBase = 0
 
     # Base Counting
     bigA = InputList[4].count('A')
