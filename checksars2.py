@@ -1,61 +1,16 @@
 import argparse
+import os
+import shutil
+import xml.etree.ElementTree as ET
 from collections import defaultdict
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
+import functions
 from allelecount import read_pileup_write_allele
 from conserved import conserved
-from functions import *
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "-i",
-        "--infile",
-        help="Input SRA accession .txt file",
-        type=argparse.FileType("r"),
-    )
-    parser.add_argument(
-        "-d",
-        "--download",
-        action="store_true",
-        help="Downloads accession list and outputs whether SARS2-CoV-2 positive",
-    )
-    parser.add_argument(
-        "-c",
-        "--check",
-        action="store_true",
-        help="Check if the SRA's are Positive or Negative",
-    )
-    parser.add_argument(
-        "--depth", type=float, default=15.00, help="Mean depth for acceptable positive."
-    )
-    parser.add_argument(
-        "-b",
-        "--bowtie",
-        action="store_true",
-        help="Aligns the reads to the reference genome",
-    )
-    parser.add_argument(
-        "-v",
-        "--variants",
-        action="store_true",
-        help="Generates variants and logs them in: SRR#_mutations.txt",
-    )
-    parser.add_argument(
-        "-a",
-        "--alleles",
-        action="store_true",
-        # type=str,
-        help="This function generates alleles for conserved positions",
-    )
-    parser.add_argument(
-        "-t", "--total", action="store_true", help="generates all alleles"
-    )
-    parser.add_argument("-D", "--delete", action="store_true")
-
-    args = parser.parse_args()
 
 
 class bcolors:
@@ -109,213 +64,245 @@ class Line:
         self.T: int = int(bigT)
 
 
-ACC_RANGE = 1618
+def main():
+    ACC_RANGE = 1618
 
-if args.infile is not None:
-    my_mutations_text_file = Path(args.infile.name + "_mutations.txt")
-else:
-    print('File not specified')
+    if args.infile is not None:
+        my_mutations_text_file = Path(args.infile.name + "_mutations.txt")
+    else:
+        print('File not specified')
 
-if args.total:
-    with open(args.infile.name) as f:
-        lines = [line.rstrip() for line in f]
-        for accession in lines:
-            acc = Accession(accession)
-            if acc.my_alleles_text_file.is_file():
-                # PRINT FORMATTED OUTPUT
-                print(
-                    f"\n{accession} \tNT\tA\tC\tG\tT\tN\ta\tc\tg\tt\tn\tdel\tdot\tcomma"
-                )
-
-                with open(acc.my_alleles_text_file, "r") as infile:
-                    lines = [line.rstrip() for line in infile]
-                    for line in lines:
-                        print(line)
-
-if args.infile and args.alleles:
-    alleles = dict(conserved())
-    data = defaultdict(list)
-    legend = ["a", "c", "g", "t"]
-    with open(args.infile.name, 'r') as infile:
-        read_lines = [line_infile.rstrip() for line_infile in infile]
-        for idx, accession in enumerate(sorted(read_lines[0:ACC_RANGE])):
-            acc = Accession(accession)
-            if acc.my_alleles_text_file.is_file() and acc.my_sam_mpileup_file.is_file():
-                print(f"{str(idx)}/{str(len(read_lines[0:ACC_RANGE]))}")
-                print(
-                    f"\n{accession} \tNT\tA\tC\tG\tT\tN\ta\tc\tg\tt\tn\tdel\tdot\tcomma"
-                )
-                try:
-                    with open(acc.my_alleles_text_file, 'r') as a_file:
-                        lines = [line.rstrip() for line in a_file]
-                        for line in lines:
-                            split_line = line.split("\t")
-                            allele_acc_row = Line(
-                                split_line[0], split_line[1], split_line[2], split_line[3], split_line[4], split_line[5])
-                            if allele_acc_row.nucleotide in alleles.keys():
-                                nt_array = np.array(
-                                    [allele_acc_row.A, allele_acc_row.C, allele_acc_row.G, allele_acc_row.T])
-                                A, B = np.partition(nt_array, 1)[0:2]
-                                noise = A + B / 2                       # noise: average of the 2 lowest numbers
-                                nt_array = nt_array - noise
-                                # if negative clip to 0
-                                nt_array = nt_array.clip(min=0)
-                                percentages = nt_array / \
-                                    nt_array.sum(axis=0)
-                                print(line)
-                                print(
-                                    f"\t\t{bcolors.OKGREEN}{allele_acc_row.nucleotide}{str.capitalize(legend[alleles[allele_acc_row.nucleotide]])}{bcolors.ENDC}\t{percentages[0]:.2%}\t{percentages[1]:.2%}\t{percentages[2]:.2%}\t{percentages[3]:.2%}\n"
-                                )
-                                # dictionary of accessions and noise per conserved nucleotide
-                                data[acc.acc].append(
-                                    percentages[alleles[allele_acc_row.nucleotide]])
-
-                except FileNotFoundError as ex:
-                    print(f"{ex} File not found")
-            elif acc.my_sam_mpileup_file.is_file() is False and acc.my_alleles_text_file.is_file() is False:
-                # GENERATE MPILEUP
-                gen_pileup(acc.acc)
-                read_pileup_write_allele(
-                    acc.acc, acc.my_sam_mpileup_file, acc.my_alleles_text_file)
-            elif acc.my_sam_mpileup_file.is_file() and acc.my_alleles_text_file.is_file() is False:
-                # THIS WRITES THE RANGE TO FILE
-                read_pileup_write_allele(
-                    acc.acc, acc.my_sam_mpileup_file, acc.my_alleles_text_file)
-    df = pd.DataFrame.from_dict(data, orient="index")
-    df = df.sum(axis=1)
-    df = df.sort_values(axis=0)
-    with pd.option_context('display.max_rows', None, 'display.max_columns', None):
-        print(df)
-
-if args.infile and not args.alleles:
-    with open(my_mutations_text_file.name, "w+") as file_variant, open(args.infile.name, "r") as file:
-        lines = [line.rstrip() for line in file]
-        for idx, accession in enumerate(lines):
-            acc = Accession(accession)
-            print(f"{idx}/{len(lines)}")
-            # DOWNLOAD: files, check if positive for SARS-CoV-2
-            if args.download:
-                if (acc.my_fastq_1_file.is_file() and acc.my_fastq_2_file.is_file() and acc.my_json_file.is_file() is False):
-                    if is_full():
-                        shutil.rmtree(acc.my_sra_dir)
-                    else:
-                        pass
-                    # fastv_func(acc.acc, acc.my_fastq_1_file,
-                        #    acc.my_fastq_2_file)
-                elif (acc.my_fastq_file.is_file() and acc.my_json_file.is_file() is False):
-                    # fastv_func(acc.acc)
-                    continue
-                elif (acc.my_fastq_file.is_file() and acc.my_fastq_1_file.is_file() and acc.my_sra_file.is_file() is False):
-                    fastq_exists(acc.acc)
-                elif (acc.my_json_file.is_file() and acc.my_fastq_1_file.is_file() and acc.my_fastq_file.is_file()):
-                    print("JSON and FASTQ files exist")
-                elif (acc.my_sra_file.is_file() and acc.my_fastq_1_file.is_file() is False and acc.my_fastq_file.is_file() is False):
-                    fastq_func(acc.my_sra_file)
-                elif (acc.my_sra_file.is_file() and acc.my_fastq_file.is_file() and acc.my_fastq_1_file.is_file() is False):
-                    # fastv_func(acc.acc)
-                    continue
-                elif (acc.my_sra_file.is_file() and acc.my_fastq_1_file.is_file() and acc.my_fastq_file.is_file() and acc.my_sam_file.is_file()):
-                    continue
-                elif (
-                    acc.my_fastq_file.is_file() is False
-                    and acc.my_fastq_1_file.is_file() is False
-                    and acc.my_sra_file.is_file() is False
-                ):
-                    fastq_exists(acc.acc)
-                else:
-                    pass
-
-            # BOWTIE
-            elif args.bowtie:
-                if acc.my_bam_file.is_file() is False:
-                    bow_tie(
-                        acc.acc,
-                        acc.my_fastq_1_file,
-                        acc.my_fastq_2_file,
-                        acc.my_fastq_file,
+    if args.infile and args.alleles:
+        alleles = dict(conserved())
+        data = defaultdict(list)
+        legend = ["a", "c", "g", "t"]
+        with open(args.infile.name, 'r') as infile:
+            read_lines = [line_infile.rstrip() for line_infile in infile]
+            for idx, accession in enumerate(read_lines):
+                acc = Accession(accession)
+                print(f"{str(idx)}/{str(len(read_lines))}")
+                if acc.my_bam_file_sorted.is_file() is True and acc.my_sam_mpileup_file.is_file() is False:
+                    # GENERATE MPILEUP
+                    print(1)
+                    print(acc.acc)
+                    functions.gen_pileup(acc.acc)
+                    read_pileup_write_allele(
+                        acc.acc, acc.my_sam_mpileup_file, acc.my_alleles_text_file)
+                elif acc.my_bam_file_sorted.is_file() and acc.my_sam_mpileup_file.is_file() and acc.my_alleles_text_file.is_file() is False:
+                    # THIS WRITES THE RANGE TO FILE
+                    print(2)
+                    read_pileup_write_allele(
+                        acc.acc, acc.my_sam_mpileup_file, acc.my_alleles_text_file)
+                elif acc.my_alleles_text_file.is_file():
+                    print(3)
+                    print(
+                        f"\n{accession} \tNT\tA\tC\tG\tT\tN\ta\tc\tg\tt\tn\tdel\tdot\tcomma"
                     )
-                    sam_tools_view(acc.acc)
-                    sam_tools_sort(acc.acc)
-                    sam_tools_index(acc.acc)
-                elif (acc.my_fastq_file.is_file() and acc.my_sam_file.is_file()) or (
-                    acc.my_fastq_1_file.is_file() and acc.my_sam_file.is_file()
-                ):
-                    print("FASTQ and .SAM files already exist. Proceed to next step.")
-                else:
-                    pass
-
-            # CALL VARIANTS
-            elif args.variants:
-                if os.stat(my_mutations_text_file).st_size > 0:
-                    with open(my_mutations_text_file, "r") as mutations_file:
-                        for line in mutations_file:
-                            print(line)
-                elif acc.my_bcf_file.is_file() is False:
-                    call_mutations(acc.acc)
-                elif acc.my_bcf_file.is_file():
-                    file_variant.write(view_mutations(acc.acc).stdout)
-                else:
-                    pass
-
-            # DELETE
-            elif args.delete:
-                try:
-                    result = xml_parse(acc.acc, 'Platform')[0]
-                    if result == 'OXFORD_NANOPORE':
-                        print(result)
-                        delete_accession(args.infile.name, acc.acc)
-                        try:
-                            os.remove(acc.my_sra_file)
-                            os.remove(acc.my_fastq_file)
-                            os.remove(acc.my_json_file)
-                            os.remove(acc.my_html_file)
-                            os.remove(acc.my_sam_file)
-                            os.remove(acc.my_bam_file)
-                            os.remove(acc.my_bcf_file)
-                            os.remove(acc.my_bam_file_sorted)
-                            os.remove(acc.my_bam_file_index)
-                        except FileNotFoundError as ex:
-                            print(f"{ex}")
-                except ET.ParseError as ex:
-                    print(ex)
-
-            # CHECK IF SRA IS POSITIVE OR NEGATIVE
-            elif args.check:
-                if acc.my_json_file.is_file():
                     try:
-                        shutil.rmtree(acc.my_sra_dir)
-                        if check_positive(acc.my_json_file) == "NEGATIVE":
-                            print(acc.acc + " is Negative: deleting")
-                            delete_accession(args.infile.name, acc.acc)
-                            os.remove(acc.my_json_file)
-                            os.remove(acc.my_html_file)
-                            os.remove(acc.my_sam_file)
-                            os.remove(acc.my_bam_file)
-                            os.remove(acc.my_bcf_file)
-                            os.remove(acc.my_bam_file_sorted)
-                            os.remove(acc.my_bam_file_index)
-                            if acc.my_fastq_file.is_file():
-                                os.remove(acc.my_fastq_file)
-                            else:
-                                os.remove(acc.my_fastq_1_file)
-                                os.remove(acc.my_fastq_2_file)
-                        elif (
-                            check_positive(acc.my_json_file) == "POSITIVE"
-                            and mean_depth(acc.my_json_file) <= args.depth
-                        ):
-                            print(
-                                f"Removing file with low depth < {mean_depth}: {acc.acc}")
-                            delete_accession(args.infile.name, acc.acc)
-                            os.remove(acc.my_json_file)
-                            os.remove(acc.my_html_file)
-                            os.remove(acc.my_sam_file)
-                            os.remove(acc.my_bam_file)
-                            os.remove(acc.my_bcf_file)
-                            os.remove(acc.my_bam_file_sorted)
-                            os.remove(acc.my_bam_file_index)
+                        with open(acc.my_alleles_text_file, 'r') as a_file:
+                            lines = [line.rstrip() for line in a_file]
+                            for line in lines:
+                                split_line = line.split("\t")
+                                allele_acc_row = Line(
+                                    split_line[0], split_line[1], split_line[2], split_line[3], split_line[4], split_line[5])
+                                if allele_acc_row.nucleotide in alleles.keys():
+                                    nt_array = np.array(
+                                        [allele_acc_row.A, allele_acc_row.C, allele_acc_row.G, allele_acc_row.T])
+                                    A, B = np.partition(nt_array, 1)[0:2]
+                                    noise = A + B / 2                       # noise: average of the 2 lowest numbers
+                                    nt_array = nt_array - noise
+                                    # if negative clip to 0
+                                    nt_array = nt_array.clip(min=0)
+                                    percentages = nt_array / \
+                                        nt_array.sum(axis=0)
+                                    # print(line)
+                                    # print(
+                                    #     f"\t\t{bcolors.OKGREEN}{allele_acc_row.nucleotide}{str.capitalize(legend[alleles[allele_acc_row.nucleotide]])}{bcolors.ENDC}\t{percentages[0]:.2%}\t{percentages[1]:.2%}\t{percentages[2]:.2%}\t{percentages[3]:.2%}\n"
+                                    # )
+                                    # dictionary of accessions and noise per conserved nucleotide
+                                    data[acc.acc].append(
+                                        percentages[alleles[allele_acc_row.nucleotide]])
+                    except FileNotFoundError as ex:
+                        print(f"{ex} File not found")
+
+        df = pd.DataFrame.from_dict(data, orient="index")
+        df = df.sum(axis=1)
+        df = df.sort_values(axis=0)
+        with pd.option_context('display.max_rows', None, 'display.max_columns', None):
+            print(df)
+
+    if args.infile and not args.alleles:
+        with open(my_mutations_text_file.name, "w+") as file_variant, open(args.infile.name, "r") as file:
+            lines = [line.rstrip() for line in file]
+            for idx, accession in enumerate(lines):
+                acc = Accession(accession)
+                print(f"{idx}/{len(lines)}")
+                # DOWNLOAD: files, check if positive for SARS-CoV-2
+                if args.download:
+                    if (acc.my_fastq_1_file.is_file() and acc.my_fastq_2_file.is_file() and acc.my_json_file.is_file() is False):
+                        if functions.is_full():
+                            shutil.rmtree(acc.my_sra_dir)
                         else:
                             pass
-                    except FileNotFoundError as ex:
+                        # fastv_func(acc.acc, acc.my_fastq_1_file,
+                            #    acc.my_fastq_2_file)
+                    elif (acc.my_fastq_file.is_file() and acc.my_json_file.is_file() is False):
+                        # fastv_func(acc.acc)
+                        continue
+                    elif (acc.my_fastq_file.is_file() and acc.my_fastq_1_file.is_file() and acc.my_sra_file.is_file() is False):
+                        functions.fastq_exists(acc.acc)
+                    elif (acc.my_json_file.is_file() and acc.my_fastq_1_file.is_file() and acc.my_fastq_file.is_file()):
+                        print("JSON and FASTQ files exist")
+                    elif (acc.my_sra_file.is_file() and acc.my_fastq_1_file.is_file() is False and acc.my_fastq_file.is_file() is False):
+                        functions.fastq_func(acc.my_sra_file)
+                    elif (acc.my_sra_file.is_file() and acc.my_fastq_file.is_file() and acc.my_fastq_1_file.is_file() is False):
+                        # fastv_func(acc.acc)
+                        continue
+                    elif (acc.my_sra_file.is_file() and acc.my_fastq_1_file.is_file() and acc.my_fastq_file.is_file() and acc.my_sam_file.is_file()):
+                        continue
+                    elif (
+                        acc.my_fastq_file.is_file() is False
+                        and acc.my_fastq_1_file.is_file() is False
+                        and acc.my_sra_file.is_file() is False
+                    ):
+                        functions.fastq_exists(acc.acc)
+                    else:
+                        pass
+
+                # BOWTIE
+                elif args.bowtie:
+                    if acc.my_bam_file.is_file() is False:
+                        functions.bow_tie(
+                            acc.acc,
+                            acc.my_fastq_1_file,
+                            acc.my_fastq_2_file,
+                            acc.my_fastq_file,
+                        )
+                        functions.sam_tools_view(acc.acc)
+                        functions.sam_tools_sort(acc.acc)
+                        functions.sam_tools_index(acc.acc)
+                    elif (acc.my_fastq_file.is_file() and acc.my_sam_file.is_file()) or (
+                        acc.my_fastq_1_file.is_file() and acc.my_sam_file.is_file()
+                    ):
+                        print(
+                            "FASTQ and .SAM files already exist. Proceed to next step.")
+                    else:
+                        pass
+
+                # CALL VARIANTS
+                elif args.variants:
+                    if os.stat(my_mutations_text_file).st_size > 0:
+                        with open(my_mutations_text_file, "r") as mutations_file:
+                            for line in mutations_file:
+                                print(line)
+                    elif acc.my_bcf_file.is_file() is False:
+                        functions.call_mutations(acc.acc)
+                    elif acc.my_bcf_file.is_file():
+                        file_variant.write(
+                            functions.view_mutations(acc.acc).stdout)
+                    else:
+                        pass
+
+                # DELETE OXFORD NANOPORE
+                elif args.delete:
+                    try:
+                        result = functions.xml_parse(acc.acc, 'Platform')[0]
+                        if result == 'OXFORD_NANOPORE':
+                            print(result)
+                            functions.delete_accession(
+                                args.infile.name, acc.acc)
+                            try:
+                                os.remove(acc.my_sra_file)
+                                os.remove(acc.my_fastq_file)
+                                os.remove(acc.my_json_file)
+                                os.remove(acc.my_html_file)
+                                os.remove(acc.my_sam_file)
+                                os.remove(acc.my_bam_file)
+                                os.remove(acc.my_bcf_file)
+                                os.remove(acc.my_bam_file_sorted)
+                                os.remove(acc.my_bam_file_index)
+                            except FileNotFoundError as ex:
+                                print(f"{ex}")
+                    except ET.ParseError as ex:
                         print(ex)
-                else:
-                    pass
+
+                # CHECK IF SRA IS POSITIVE OR NEGATIVE
+                elif args.check:
+                    if acc.my_json_file.is_file():
+                        try:
+                            shutil.rmtree(acc.my_sra_dir)
+                            if functions.check_positive(acc.my_json_file) == "NEGATIVE":
+                                print(acc.acc + " is Negative: deleting")
+                                functions.delete_accession(
+                                    args.infile.name, acc.acc)
+                                os.remove(acc.my_json_file)
+                                os.remove(acc.my_html_file)
+                                os.remove(acc.my_sam_file)
+                                os.remove(acc.my_bam_file)
+                                os.remove(acc.my_bcf_file)
+                                os.remove(acc.my_bam_file_sorted)
+                                os.remove(acc.my_bam_file_index)
+                                if acc.my_fastq_file.is_file():
+                                    os.remove(acc.my_fastq_file)
+                                else:
+                                    os.remove(acc.my_fastq_1_file)
+                                    os.remove(acc.my_fastq_2_file)
+                            elif (
+                                functions.check_positive(
+                                    acc.my_json_file) == "POSITIVE"
+                                and functions.mean_depth(acc.my_json_file) <= args.depth
+                            ):
+                                print(
+                                    f"Removing file with low depth < {functions.mean_depth}: {acc.acc}")
+                                functions.delete_accession(
+                                    args.infile.name, acc.acc)
+                                os.remove(acc.my_json_file)
+                                os.remove(acc.my_html_file)
+                                os.remove(acc.my_sam_file)
+                                os.remove(acc.my_bam_file)
+                                os.remove(acc.my_bcf_file)
+                                os.remove(acc.my_bam_file_sorted)
+                                os.remove(acc.my_bam_file_index)
+                            else:
+                                pass
+                        except FileNotFoundError as ex:
+                            print(ex)
+                    else:
+                        pass
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-i", "--infile",
+                        help="Input SRA accession .txt file",
+                        type=argparse.FileType("r")
+                        )
+    parser.add_argument("-d", "--download",
+                        action="store_true",
+                        help="Downloads accession list and outputs whether SARS2-CoV-2 positive"
+                        )
+    parser.add_argument("-c", "--check",
+                        action="store_true",
+                        help="Check if the SRA's are Positive or Negative"
+                        )
+    parser.add_argument("-T", "--depth",
+                        type=float, default=20.00,
+                        help="Mean depth for acceptable positive."
+                        )
+    parser.add_argument("-b", "--bowtie",
+                        action="store_true",
+                        help="Aligns the reads to the reference genome"
+                        )
+    parser.add_argument("-v", "--variants",
+                        action="store_true",
+                        help="Generates variants and logs them in: SRR#_mutations.txt"
+                        )
+    parser.add_argument("-a", "--alleles",
+                        action="store_true",
+                        help="This function generates alleles for conserved positions"
+                        )
+    parser.add_argument("-D", "--delete",
+                        action="store_true"
+                        )
+    args = parser.parse_args()
+    main()
