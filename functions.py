@@ -22,7 +22,7 @@ def call_mutations(accession):
 
 def gen_pileup(accession):
     args = (
-        f"samtools mpileup -d 150000 -o {accession}_pileup.txt {accession}.sorted.bam"
+        f"samtools mpileup -d 10000 -o {accession}_pileup.txt {accession}.sorted.bam"
     )
     try:
         subprocess.run(args, shell=True)
@@ -61,7 +61,7 @@ def fastq_exists(accession):
         elif not re_result:
             subprocess.run(["prefetch", accession])
         else:
-            print("Fastq_exists else conditional")
+            print("Fastq file exists")
     except subprocess.CalledProcessError:
         raise Exception("Error running fastq-dump on ", accession)
 
@@ -85,10 +85,10 @@ def isPairedSRA(accession):
 def bow_tie(accession, fastq_file_1=None, fastq_file_2=None, fastq_file=None):
     if fastq_file_1 is not None and fastq_file_2 is not None:
         if fastq_file_1.is_file() and fastq_file_2.is_file():
-            args = f"bowtie2 -p 16 -x bowtie -1 {str(fastq_file_1)} -2 {str(fastq_file_2)} -S {accession}.sam"
+            args = f"bowtie2 -x bowtie -1 {str(fastq_file_1)} -2 {str(fastq_file_2)} -S {accession}.sam"
             subprocess.run(args, shell=True)
         elif fastq_file.is_file():
-            args = f"bowtie2 -p 16 -x bowtie -U {accession}.fastq.gz -S {accession}.sam"
+            args = f"bowtie2 -x bowtie -U {accession}.fastq.gz -S {accession}.sam"
             subprocess.run(args, shell=True)
         else:
             print("No FASTQ files.")

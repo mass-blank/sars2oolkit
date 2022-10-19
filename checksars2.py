@@ -55,13 +55,33 @@ class Conserved:
 
 
 class Line:
-    def __init__(self, ref, nucleotide, bigA, bigC, bigG, bigT):
-        self.ref: str = ref
+    def __init__(self, nucleotide, bigA, bigC, bigG, bigT):
         self.nucleotide = int(nucleotide)
         self.A: int = int(bigA)
         self.C: int = int(bigC)
         self.G: int = int(bigG)
         self.T: int = int(bigT)
+
+
+def calculate_noise_return_percentages(rowA, rowC, rowG, rowT):
+    nt_array = np.array(
+        [rowA, rowC, rowG, rowT])
+    A, B = np.partition(nt_array, 1)[0:2]
+    noise = A + B / 2
+    nt_array = nt_array - noise
+    nt_array = nt_array.clip(min=0)
+    perc_array = nt_array / nt_array.sum(axis=0)
+    return perc_array
+
+
+def open_file_return_lines(file) -> list:
+    """Open file return lines as a list stripped of \\n lines"""
+    try:
+        with open(file, 'r') as f:
+            lines = [line.rstrip() for line in f]
+        return lines
+    except FileNotFoundError as ex:
+        print(f'File not found: {ex}')
 
 
 def main():
@@ -75,55 +95,58 @@ def main():
     if args.infile and args.alleles:
         alleles = dict(conserved())
         data = defaultdict(list)
-        legend = ["a", "c", "g", "t"]
-        with open(args.infile.name, 'r') as infile:
-            read_lines = [line_infile.rstrip() for line_infile in infile]
-            for idx, accession in enumerate(read_lines):
-                acc = Accession(accession)
-                print(f"{str(idx)}/{str(len(read_lines))}")
-                if acc.my_bam_file_sorted.is_file() is True and acc.my_sam_mpileup_file.is_file() is False:
-                    # GENERATE MPILEUP
-                    print(1)
-                    print(acc.acc)
-                    functions.gen_pileup(acc.acc)
-                    read_pileup_write_allele(
-                        acc.acc, acc.my_sam_mpileup_file, acc.my_alleles_text_file)
-                elif acc.my_bam_file_sorted.is_file() and acc.my_sam_mpileup_file.is_file() and acc.my_alleles_text_file.is_file() is False:
-                    # THIS WRITES THE RANGE TO FILE
-                    print(2)
-                    read_pileup_write_allele(
-                        acc.acc, acc.my_sam_mpileup_file, acc.my_alleles_text_file)
-                elif acc.my_alleles_text_file.is_file():
-                    print(3)
-                    print(
-                        f"\n{accession} \tNT\tA\tC\tG\tT\tN\ta\tc\tg\tt\tn\tdel\tdot\tcomma"
-                    )
-                    try:
-                        with open(acc.my_alleles_text_file, 'r') as a_file:
-                            lines = [line.rstrip() for line in a_file]
-                            for line in lines:
-                                split_line = line.split("\t")
-                                allele_acc_row = Line(
-                                    split_line[0], split_line[1], split_line[2], split_line[3], split_line[4], split_line[5])
-                                if allele_acc_row.nucleotide in alleles.keys():
-                                    nt_array = np.array(
-                                        [allele_acc_row.A, allele_acc_row.C, allele_acc_row.G, allele_acc_row.T])
-                                    A, B = np.partition(nt_array, 1)[0:2]
-                                    noise = A + B / 2                       # noise: average of the 2 lowest numbers
-                                    nt_array = nt_array - noise
-                                    # if negative clip to 0
-                                    nt_array = nt_array.clip(min=0)
-                                    percentages = nt_array / \
-                                        nt_array.sum(axis=0)
-                                    # print(line)
-                                    # print(
-                                    #     f"\t\t{bcolors.OKGREEN}{allele_acc_row.nucleotide}{str.capitalize(legend[alleles[allele_acc_row.nucleotide]])}{bcolors.ENDC}\t{percentages[0]:.2%}\t{percentages[1]:.2%}\t{percentages[2]:.2%}\t{percentages[3]:.2%}\n"
-                                    # )
-                                    # dictionary of accessions and noise per conserved nucleotide
-                                    data[acc.acc].append(
-                                        percentages[alleles[allele_acc_row.nucleotide]])
-                    except FileNotFoundError as ex:
-                        print(f"{ex} File not found")
+        my_acc_file_lines = set(open_file_return_lines(args.infile.name))
+        for idx, accession in enumerate(my_acc_file_lines):
+            acc = Accession(accession)
+            print(f"{str(idx)}/{str(len(my_acc_file_lines))}", acc.acc)
+            if acc.my_bam_file_sorted.is_file() is True and acc.my_sam_mpileup_file.is_file() is False:
+                # GENERATE MPILEUP
+                print(1)
+                functions.gen_pileup(acc.acc)
+                read_pileup_write_allele(
+                    acc.acc, acc.my_sam_mpileup_file, acc.my_alleles_text_file)
+                my_allele_lines = open_file_return_lines(
+                    acc.my_alleles_text_file)
+                for line in my_allele_lines:
+                    split_line = line.split("\t")
+                    allele_acc_row = Line(
+                        split_line[1], split_line[2], split_line[3], split_line[4], split_line[5])
+                    if allele_acc_row.nucleotide in alleles.keys():
+                        percentages = calculate_noise_return_percentages(
+                            allele_acc_row.A, allele_acc_row.C, allele_acc_row.G, allele_acc_row.T)
+                        # print(line)
+                        # print(
+                        #     f"\t\t{bcolors.OKGREEN}{allele_acc_row.nucleotide}{str.capitalize(legend[alleles[allele_acc_row.nucleotide]])}{bcolors.ENDC}\t{percentages[0]:.2%}\t{percentages[1]:.2%}\t{percentages[2]:.2%}\t{percentages[3]:.2%}\n"
+                        # )
+                        # dictionary of accessions and noise per conserved nucleotide
+                        data[acc.acc].append(
+                            percentages[alleles[allele_acc_row.nucleotide]])
+            elif acc.my_bam_file_sorted.is_file() and acc.my_sam_mpileup_file.is_file() and acc.my_alleles_text_file.is_file() is False:
+                # THIS WRITES THE RANGE TO FILE
+                print(2)
+                read_pileup_write_allele(
+                    acc.acc, acc.my_sam_mpileup_file, acc.my_alleles_text_file)
+            elif acc.my_alleles_text_file.is_file():
+                print(3)
+                # print(
+                #     f"\n{accession} \tNT\tA\tC\tG\tT\tN\ta\tc\tg\tt\tn\tdel\tdot\tcomma"
+                # )
+                my_allele_lines = open_file_return_lines(
+                    acc.my_alleles_text_file)
+                for line in my_allele_lines:
+                    split_line = line.split("\t")
+                    allele_acc_row = Line(
+                        split_line[1], split_line[2], split_line[3], split_line[4], split_line[5])
+                    if allele_acc_row.nucleotide in alleles.keys():
+                        percentages = calculate_noise_return_percentages(
+                            allele_acc_row.A, allele_acc_row.C, allele_acc_row.G, allele_acc_row.T)
+                        # print(line)
+                        # print(
+                        #     f"\t\t{bcolors.OKGREEN}{allele_acc_row.nucleotide}{str.capitalize(legend[alleles[allele_acc_row.nucleotide]])}{bcolors.ENDC}\t{percentages[0]:.2%}\t{percentages[1]:.2%}\t{percentages[2]:.2%}\t{percentages[3]:.2%}\n"
+                        # )
+                        # dictionary of accessions and noise per conserved nucleotide
+                        data[acc.acc].append(
+                            percentages[alleles[allele_acc_row.nucleotide]])
 
         df = pd.DataFrame.from_dict(data, orient="index")
         df = df.sum(axis=1)
@@ -132,8 +155,8 @@ def main():
             print(df)
 
     if args.infile and not args.alleles:
-        with open(my_mutations_text_file.name, "w+") as file_variant, open(args.infile.name, "r") as file:
-            lines = [line.rstrip() for line in file]
+        with open(my_mutations_text_file.name, "w+") as file_variant:
+            lines = set(open_file_return_lines(args.infile.name))
             for idx, accession in enumerate(lines):
                 acc = Accession(accession)
                 print(f"{idx}/{len(lines)}")
