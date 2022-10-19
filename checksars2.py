@@ -1,7 +1,7 @@
 import argparse
 import os
 import shutil
-import xml.etree.ElementTree as ET
+import xml.etree.ElementTree as ElTr
 from collections import defaultdict
 from pathlib import Path
 
@@ -13,7 +13,7 @@ from allelecount import read_pileup_write_allele
 from conserved import conserved
 
 
-class bcolors:
+class Bcolors:
     HEADER = "\033[95m"
     OKBLUE = "\033[94m"
     OKCYAN = "\033[96m"
@@ -49,9 +49,10 @@ class Conserved:
         self.nucleotide: int = position_allele[0]
         self.allele = position_allele[1]
 
-    def get_allele(self, pos):
-        self.legend = ["a", "c", "g", "t"]
-        return self.legend[pos]
+    @staticmethod
+    def get_allele(pos):
+        legend = ["a", "c", "g", "t"]
+        return legend[pos]
 
 
 class Line:
@@ -63,11 +64,11 @@ class Line:
         self.T: int = int(bigT)
 
 
-def calculate_noise_return_percentages(rowA, rowC, rowG, rowT):
+def calculate_noise_return_percentages(row_a, row_c, row_g, row_t):
     nt_array = np.array(
-        [rowA, rowC, rowG, rowT])
-    A, B = np.partition(nt_array, 1)[0:2]
-    noise = A + B / 2
+        [row_a, row_c, row_g, row_t])
+    a, b = np.partition(nt_array, 1)[0:2]
+    noise = a + b / 2
     nt_array = nt_array - noise
     nt_array = nt_array.clip(min=0)
     perc_array = nt_array / nt_array.sum(axis=0)
@@ -85,8 +86,6 @@ def open_file_return_lines(file) -> list:
 
 
 def main():
-    ACC_RANGE = 1618
-
     if args.infile is not None:
         my_mutations_text_file = Path(args.infile.name + "_mutations.txt")
     else:
@@ -116,12 +115,13 @@ def main():
                             allele_acc_row.A, allele_acc_row.C, allele_acc_row.G, allele_acc_row.T)
                         # print(line)
                         # print(
-                        #     f"\t\t{bcolors.OKGREEN}{allele_acc_row.nucleotide}{str.capitalize(legend[alleles[allele_acc_row.nucleotide]])}{bcolors.ENDC}\t{percentages[0]:.2%}\t{percentages[1]:.2%}\t{percentages[2]:.2%}\t{percentages[3]:.2%}\n"
+                        #     f"\t\t{Bcolors.OKGREEN}{allele_acc_row.nucleotide}{str.capitalize(legend[alleles[allele_acc_row.nucleotide]])}{bcolors.ENDC}\t{percentages[0]:.2%}\t{percentages[1]:.2%}\t{percentages[2]:.2%}\t{percentages[3]:.2%}\n"
                         # )
                         # dictionary of accessions and noise per conserved nucleotide
                         data[acc.acc].append(
                             percentages[alleles[allele_acc_row.nucleotide]])
-            elif acc.my_bam_file_sorted.is_file() and acc.my_sam_mpileup_file.is_file() and acc.my_alleles_text_file.is_file() is False:
+            elif acc.my_bam_file_sorted.is_file() and acc.my_sam_mpileup_file.is_file() and \
+                    acc.my_alleles_text_file.is_file() is False:
                 # THIS WRITES THE RANGE TO FILE
                 print(2)
                 read_pileup_write_allele(
@@ -162,26 +162,32 @@ def main():
                 print(f"{idx}/{len(lines)}")
                 # DOWNLOAD: files, check if positive for SARS-CoV-2
                 if args.download:
-                    if (acc.my_fastq_1_file.is_file() and acc.my_fastq_2_file.is_file() and acc.my_json_file.is_file() is False):
+                    if acc.my_fastq_1_file.is_file() and acc.my_fastq_2_file.is_file() and \
+                            acc.my_json_file.is_file() is False:
                         if functions.is_full():
                             shutil.rmtree(acc.my_sra_dir)
                         else:
                             pass
                         # fastv_func(acc.acc, acc.my_fastq_1_file,
                             #    acc.my_fastq_2_file)
-                    elif (acc.my_fastq_file.is_file() and acc.my_json_file.is_file() is False):
+                    elif acc.my_fastq_file.is_file() and acc.my_json_file.is_file() is False:
                         # fastv_func(acc.acc)
                         continue
-                    elif (acc.my_fastq_file.is_file() and acc.my_fastq_1_file.is_file() and acc.my_sra_file.is_file() is False):
+                    elif acc.my_fastq_file.is_file() and acc.my_fastq_1_file.is_file() and \
+                            acc.my_sra_file.is_file() is False:
                         functions.fastq_exists(acc.acc)
-                    elif (acc.my_json_file.is_file() and acc.my_fastq_1_file.is_file() and acc.my_fastq_file.is_file()):
+                    elif acc.my_json_file.is_file() and acc.my_fastq_1_file.is_file() and \
+                            acc.my_fastq_file.is_file():
                         print("JSON and FASTQ files exist")
-                    elif (acc.my_sra_file.is_file() and acc.my_fastq_1_file.is_file() is False and acc.my_fastq_file.is_file() is False):
+                    elif acc.my_sra_file.is_file() and acc.my_fastq_1_file.is_file() is False and \
+                            acc.my_fastq_file.is_file() is False:
                         functions.fastq_func(acc.my_sra_file)
-                    elif (acc.my_sra_file.is_file() and acc.my_fastq_file.is_file() and acc.my_fastq_1_file.is_file() is False):
+                    elif acc.my_sra_file.is_file() and acc.my_fastq_file.is_file() and \
+                            acc.my_fastq_1_file.is_file() is False:
                         # fastv_func(acc.acc)
                         continue
-                    elif (acc.my_sra_file.is_file() and acc.my_fastq_1_file.is_file() and acc.my_fastq_file.is_file() and acc.my_sam_file.is_file()):
+                    elif (acc.my_sra_file.is_file() and acc.my_fastq_1_file.is_file() and
+                          acc.my_fastq_file.is_file() and acc.my_sam_file.is_file()):
                         continue
                     elif (
                         acc.my_fastq_file.is_file() is False
@@ -246,7 +252,7 @@ def main():
                                 os.remove(acc.my_bam_file_index)
                             except FileNotFoundError as ex:
                                 print(f"{ex}")
-                    except ET.ParseError as ex:
+                    except ElTr.ParseError as ex:
                         print(ex)
 
                 # CHECK IF SRA IS POSITIVE OR NEGATIVE
