@@ -83,10 +83,16 @@ def open_file_return_lines(file) -> list:
         return lines
     except FileNotFoundError as ex:
         print(f'File not found: {ex}')
-
+def update_acc_file(name):
+    original = set(open_file_return_lines(name))
+    new = list(original)
+    with open('SRR_List_1.txt', 'w') as file:
+        for line in new:
+            file.write(line)
+            file.write('\n')
 
 def main():
-    if args.infile is not None:
+    if args.infile.name is not None:
         my_mutations_text_file = Path(args.infile.name + "_mutations.txt")
     else:
         print('File not specified')
@@ -98,7 +104,7 @@ def main():
         for idx, accession in enumerate(my_acc_file_lines):
             acc = Accession(accession)
             print(f"{str(idx)}/{str(len(my_acc_file_lines))}", acc.acc)
-            if acc.my_bam_file_sorted.is_file() is True and acc.my_sam_mpileup_file.is_file() is False:
+            if acc.my_sam_mpileup_file.exists() is False:
                 # GENERATE MPILEUP
                 print(1)
                 functions.gen_pileup(acc.acc)
@@ -120,13 +126,12 @@ def main():
                         # dictionary of accessions and noise per conserved nucleotide
                         data[acc.acc].append(
                             percentages[alleles[allele_acc_row.nucleotide]])
-            elif acc.my_bam_file_sorted.is_file() and acc.my_sam_mpileup_file.is_file() and \
-                    acc.my_alleles_text_file.is_file() is False:
+            elif acc.my_sam_mpileup_file.exists() is True and acc.my_alleles_text_file.exists() is False:
                 # THIS WRITES THE RANGE TO FILE
                 print(2)
                 read_pileup_write_allele(
                     acc.acc, acc.my_sam_mpileup_file, acc.my_alleles_text_file)
-            elif acc.my_alleles_text_file.is_file():
+            elif acc.my_alleles_text_file.exists() and acc.my_sam_mpileup_file.exists():
                 print(3)
                 # print(
                 #     f"\n{accession} \tNT\tA\tC\tG\tT\tN\ta\tc\tg\tt\tn\tdel\tdot\tcomma"
@@ -159,48 +164,51 @@ def main():
             lines = set(open_file_return_lines(args.infile.name))
             for idx, accession in enumerate(lines):
                 acc = Accession(accession)
+                print(acc.acc)
                 print(f"{idx}/{len(lines)}")
                 # DOWNLOAD: files, check if positive for SARS-CoV-2
                 if args.download:
-                    if acc.my_fastq_1_file.is_file() and acc.my_fastq_2_file.is_file() and \
-                            acc.my_json_file.is_file() is False:
+                    if acc.my_fastq_1_file.exists() and acc.my_fastq_2_file.exists() and \
+                            acc.my_json_file.exists() is False:
                         if functions.is_full():
                             shutil.rmtree(acc.my_sra_dir)
                         else:
                             pass
-                        # fastv_func(acc.acc, acc.my_fastq_1_file,
-                            #    acc.my_fastq_2_file)
-                    elif acc.my_fastq_file.is_file() and acc.my_json_file.is_file() is False:
-                        # fastv_func(acc.acc)
+                        #functions.fastv_func(acc.acc, acc.my_fastq_1_file,
+                        #       acc.my_fastq_2_file)
+                    elif acc.my_fastq_file.exists() and acc.my_json_file.exists() is False:
+                        #functions.fastv_func(acc.acc)
                         continue
-                    elif acc.my_fastq_file.is_file() and acc.my_fastq_1_file.is_file() and \
-                            acc.my_sra_file.is_file() is False:
+                    elif acc.my_fastq_file.exists() and acc.my_fastq_1_file.exists() and \
+                            acc.my_sra_file.exists() is False:
                         functions.fastq_exists(acc.acc)
-                    elif acc.my_json_file.is_file() and acc.my_fastq_1_file.is_file() and \
-                            acc.my_fastq_file.is_file():
+                    elif acc.my_json_file.exists() and acc.my_fastq_1_file.exists() and \
+                            acc.my_fastq_file.exists():
                         print("JSON and FASTQ files exist")
-                    elif acc.my_sra_file.is_file() and acc.my_fastq_1_file.is_file() is False and \
-                            acc.my_fastq_file.is_file() is False:
+                    elif acc.my_sra_file.exists() and acc.my_fastq_1_file.exists() is False and \
+                            acc.my_fastq_file.exists() is False:
                         functions.fastq_func(acc.my_sra_file)
-                    elif acc.my_sra_file.is_file() and acc.my_fastq_file.is_file() and \
-                            acc.my_fastq_1_file.is_file() is False:
-                        # fastv_func(acc.acc)
+                    elif acc.my_sra_file.exists() and acc.my_fastq_file.exists() and \
+                            acc.my_fastq_1_file.exists() is False:
+                        #functions.fastv_func(acc.acc)
                         continue
-                    elif (acc.my_sra_file.is_file() and acc.my_fastq_1_file.is_file() and
-                          acc.my_fastq_file.is_file() and acc.my_sam_file.is_file()):
+                    elif (acc.my_sra_file.exists() and acc.my_fastq_1_file.exists() and
+                          acc.my_fastq_file.exists() and acc.my_sam_file.exists()):
                         continue
                     elif (
-                        acc.my_fastq_file.is_file() is False
-                        and acc.my_fastq_1_file.is_file() is False
-                        and acc.my_sra_file.is_file() is False
+                        acc.my_fastq_file.exists() is False
+                        and acc.my_fastq_1_file.exists() is False
+                        and acc.my_sra_file.exists() is False
                     ):
+                        print('fastq_exists function')
                         functions.fastq_exists(acc.acc)
                     else:
                         pass
 
                 # BOWTIE
                 elif args.bowtie:
-                    if acc.my_bam_file.is_file() is False:
+                    if acc.my_sam_file.exists() and acc.my_bam_file.exists() is False:
+                        print(1)
                         functions.bow_tie(
                             acc.acc,
                             acc.my_fastq_1_file,
@@ -210,8 +218,8 @@ def main():
                         functions.sam_tools_view(acc.acc)
                         functions.sam_tools_sort(acc.acc)
                         functions.sam_tools_index(acc.acc)
-                    elif (acc.my_fastq_file.is_file() and acc.my_sam_file.is_file()) or (
-                        acc.my_fastq_1_file.is_file() and acc.my_sam_file.is_file()
+                    elif (acc.my_fastq_file.exists() and acc.my_sam_file.exists()) or (
+                        acc.my_fastq_1_file.exists() and acc.my_sam_file.exists()
                     ):
                         print(
                             "FASTQ and .SAM files already exist. Proceed to next step.")
@@ -224,9 +232,9 @@ def main():
                         with open(my_mutations_text_file, "r") as mutations_file:
                             for line in mutations_file:
                                 print(line)
-                    elif acc.my_bcf_file.is_file() is False:
+                    elif acc.my_bcf_file.exists() is False:
                         functions.call_mutations(acc.acc)
-                    elif acc.my_bcf_file.is_file():
+                    elif acc.my_bcf_file.exists():
                         file_variant.write(
                             functions.view_mutations(acc.acc).stdout)
                     else:
@@ -257,7 +265,7 @@ def main():
 
                 # CHECK IF SRA IS POSITIVE OR NEGATIVE
                 elif args.check:
-                    if acc.my_json_file.is_file():
+                    if acc.my_json_file.exists():
                         try:
                             shutil.rmtree(acc.my_sra_dir)
                             if functions.check_positive(acc.my_json_file) == "NEGATIVE":
@@ -271,7 +279,7 @@ def main():
                                 os.remove(acc.my_bcf_file)
                                 os.remove(acc.my_bam_file_sorted)
                                 os.remove(acc.my_bam_file_index)
-                                if acc.my_fastq_file.is_file():
+                                if acc.my_fastq_file.exists():
                                     os.remove(acc.my_fastq_file)
                                 else:
                                     os.remove(acc.my_fastq_1_file)
