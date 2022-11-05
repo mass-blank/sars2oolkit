@@ -30,6 +30,7 @@ def ungapped_pos(seq, pos):
 # Create a list of SeqIO Records
 fasta = list(SeqIO.parse(FILE_NAME, format='fasta'))
 
+
 # Create a dictionary to access each genome using 'name'
 seqs = {}
 for entry in fasta:

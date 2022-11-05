@@ -106,22 +106,12 @@ def main():
                         data[acc.acc].append(percentages[alleles[key]])
                     except KeyError as ex:
                         print(f"Key doesn't exist {ex}: position {key}")
-                # print(line)
-                # print(
-                #     f"\t\t{Bcolors.OKGREEN}{allele_acc_row.nucleotide}{str.capitalize(legend[alleles[allele_acc_row.nucleotide]])}{bcolors.ENDC}\t{percentages[0]:.2%}\t{percentages[1]:.2%}\t{percentages[2]:.2%}\t{percentages[3]:.2%}\n"
-                # )
-                # dictionary of accessions and noise per conserved nucleotide
 
             elif acc.my_sam_mpileup_file.exists() and acc.my_alleles_text_file.exists() is False:
                 # THIS WRITES THE RANGE TO FILE
-                print(2)
                 functions.read_pileup_write_allele(
                     acc.acc, acc.my_sam_mpileup_file, acc.my_alleles_text_file)
             elif acc.my_alleles_text_file.exists() and acc.my_sam_mpileup_file.exists():
-                print(3)
-                # print(
-                #     f"\n{accession} \tNT\tA\tC\tG\tT\tN\ta\tc\tg\tt\tn\tdel\tdot\tcomma"
-                # )
                 my_allele_lines = functions.open_file_return_lines(
                     acc.my_alleles_text_file)
                 split_line = [line.split("\t") for line in my_allele_lines]
@@ -135,22 +125,6 @@ def main():
                         data[acc.acc].append(percentages[alleles[key]])
                     except KeyError as ex:
                         print(f"Value {ex} doesn't exist at position {key}")
-
-                # for line in my_allele_lines:
-                #     split_line = line.split("\t")
-                #     allele_acc_row = Line(
-                #         split_line[1], split_line[2], split_line[3], split_line[4], split_line[5])
-                #     if allele_acc_row.nucleotide in alleles.keys():
-                #         percentages = functions.calculate_noise_return_percentages(
-                #             allele_acc_row.A, allele_acc_row.C, allele_acc_row.G, allele_acc_row.T)
-                #         # print(line)
-                #         # print(
-                #         #     f"\t\t{bcolors.OKGREEN}{allele_acc_row.nucleotide}{str.capitalize(legend[alleles[allele_acc_row.nucleotide]])}{bcolors.ENDC}\t{percentages[0]:.2%}\t{percentages[1]:.2%}\t{percentages[2]:.2%}\t{percentages[3]:.2%}\n"
-                #         # )
-                #         # dictionary of accessions and noise per conserved nucleotide
-                #         data[acc.acc].append(
-                #             percentages[alleles[allele_acc_row.nucleotide]])
-
         df = pd.DataFrame.from_dict(data, orient="index")
         df = df.sum(axis=1)
         df = df.sort_values(axis=0)
@@ -188,48 +162,6 @@ def main():
                     functions.fastq_exists(acc.acc)
 
                 else:
-                    print('delete?')
-                    # try:
-                    #     shutil.rmtree(acc.my_sra_dir)
-                    # except OSError:
-                    #     print(f"{acc.my_sra_dir} directory doesn't exist")
-                    # try:
-                    #     os.remove(acc.my_json_file)
-                    # except FileNotFoundError:
-                    #     print(f"{acc.my_json_file} doesn't exist")
-                    # try:
-                    #     os.remove(acc.my_html_file)
-                    # except FileNotFoundError:
-                    #     print(f"{acc.my_html_file} doesn't exist")
-                    # try:
-                    #     os.remove(acc.my_sam_file)
-                    # except FileNotFoundError:
-                    #     print(f"{acc.my_sam_file} doesn't exist")
-                    # try:
-                    #     os.remove(acc.my_bam_file)
-                    # except FileNotFoundError:
-                    #     print(f"{acc.my_bam_file} doesn't exist")
-                    # try:
-                    #     os.remove(acc.my_bcf_file)
-                    # except FileNotFoundError:
-                    #     print(f"{acc.my_bcf_file} doesn't exist")
-                    # try:
-                    #     os.remove(acc.my_bam_file_sorted)
-                    # except FileNotFoundError:
-                    #     print(f"{acc.my_bam_file_sorted} doesn't exist")
-                    # try:
-                    #     os.remove(acc.my_bam_file_index)
-                    # except FileNotFoundError:
-                    #     print(f"{acc.my_bam_file_index} doesn't exist")
-                    # try:
-                    #     os.remove(acc.my_fastq_file)
-                    # except FileNotFoundError:
-                    #     print(f"{acc.my_fastq_file} doesn't exist")
-                    # try:
-                    #     os.remove(acc.my_fastq_1_file)
-                    #     os.remove(acc.my_fastq_2_file)
-                    # except FileNotFoundError:
-                    #     print(f"{acc.my_fastq_1_file} and {acc.my_fastq_2_file} don't exist")
                     pass
 
             # BOWTIE
