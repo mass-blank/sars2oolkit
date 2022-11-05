@@ -166,15 +166,7 @@ def Base_Counter(InputRow):
     return FinalOutput
 
 
-def read_pileup_write_allele(accession, input, output):
-    try:
-        with open(input, "r") as infile, open(output, "w") as outfile:
-            for line in infile:
-                generate_base = Base_Counter(line.strip())
-                outfile.write(generate_base + "\n")
-        print(f"{accession}: pileup created")
-    except FileNotFoundError as ex:
-        print(f"{ex}: File not found")
+
 
 # Windows
 # file_in = sys.argv[1]
