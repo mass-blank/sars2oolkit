@@ -82,12 +82,20 @@ def main():
         print('File not specified')
 
     if args.infile and args.alleles:
+        # This block of code relates to the arguments: checksars2.py -i {file} -a
+
+        # function from SRAFunctions/conserved.py returns a list of ancestral positions and corresponding allele
         alleles = dict(conserved())
+        # A basal mutation that is excluded by conserved.py but is included here as it's been phylogenetically accepted
+        # as an important mutation separating 2 lineages: v1 and a1
+        # 3 = t as in [ 'a', 'c', 'g', 't' ]
         alleles[18060] = 3
+        # initialize empty dictionary of list objects
         data = defaultdict(list)
+        # creates a set of unique accessions
         my_acc_file_lines = set(functions.open_file_return_lines(args.infile.name))
         for idx, accession in enumerate(my_acc_file_lines):
-            row_dict = defaultdict(dict)
+            # creates an Accession object which creates Path objects
             acc = Accession(accession)
             print(f"{str(idx)}/{str(len(my_acc_file_lines))}", acc.acc)
             if acc.my_sam_mpileup_file.exists() is False and acc.my_bam_file_sorted.exists():
@@ -96,7 +104,8 @@ def main():
                     acc.acc, acc.my_sam_mpileup_file, acc.my_alleles_text_file)
                 my_allele_lines = functions.open_file_return_lines(acc.my_alleles_text_file)
                 split_line = [line.split("\t") for line in my_allele_lines]
-                row_dict = {int(item[1]): {'a': int(item[2]), 'c': int(item[3]), 'g': int(item[4]), 't': int(item[5])} for item in split_line}
+                row_dict = {int(item[1]): {'a': int(item[2]), 'c': int(item[3]), 'g': int(item[4]), 't': int(item[5])}
+                            for item in split_line}
                 for key in alleles.keys():
                     try:
                         percentages = functions.calculate_noise_return_percentages(row_dict[key]['a'],
@@ -115,7 +124,8 @@ def main():
                 my_allele_lines = functions.open_file_return_lines(
                     acc.my_alleles_text_file)
                 split_line = [line.split("\t") for line in my_allele_lines]
-                row_dict = {int(item[1]): { 'a': int(item[2]), 'c': int(item[3]), 'g': int(item[4]), 't': int(item[5])} for item in split_line}
+                row_dict = {int(item[1]): {'a': int(item[2]), 'c': int(item[3]), 'g': int(item[4]), 't': int(item[5])}
+                            for item in split_line}
                 for key in alleles.keys():
                     try:
                         percentages = functions.calculate_noise_return_percentages(row_dict[key]['a'],

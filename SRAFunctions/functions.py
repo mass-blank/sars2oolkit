@@ -13,6 +13,7 @@ from SRAFunctions.allelecount import Base_Counter
 
 
 def progress():
+    """How many sorted.bam files exist out of total accession"""
     lines = open_file_return_lines('SRR_List_1.txt')
     count = 0
     for line in set(lines):
@@ -23,6 +24,7 @@ def progress():
 
 
 def calculate_noise_return_percentages(row_a: int, row_c: int, row_g: int, row_t: int):
+    """Calculate the noise in each row and return percentages(float) without noise"""
     nt_array = np.array(
         [row_a, row_c, row_g, row_t])
     a, b = np.partition(nt_array, 1)[0:2]
@@ -33,13 +35,14 @@ def calculate_noise_return_percentages(row_a: int, row_c: int, row_g: int, row_t
     return perc_array
 
 
-def open_file_return_lines(file: Path):
+def open_file_return_lines(file: Path) -> list:
     with open(file, 'r') as f:
         lines = [line.rstrip() for line in f]
     return lines
 
 
 def xml_parse(accession: str, search: str) -> list:
+    """Returns bool for specific search item found in the xml file for an accession from NCBI"""
     args = f"esummary -db sra -id {accession}"
     myxml = subprocess.run(args, shell=True, capture_output=True, text=True)
     myroot = ElTr.fromstring(myxml.stdout)
@@ -48,12 +51,14 @@ def xml_parse(accession: str, search: str) -> list:
 
 
 def call_mutations(accession: Accession):
+    """calls mutations and outputs them into a bcf file"""
     args = f"bcftools mpileup -d 150000 -Ou -f SARS-CoV-2_reference.fasta {accession.my_bam_file_sorted} | " \
            f"bcftools call -mv -Ob -o {accession.my_bcf_file}"
     subprocess.run(args, shell=True)
 
 
 def gen_pileup(accession: Accession):
+    """Generate pileup"""
     args = (
         f"samtools mpileup -d 10000 {accession.my_bam_file_sorted} -o {accession.my_sam_mpileup_file} "
     )
@@ -64,12 +69,14 @@ def gen_pileup(accession: Accession):
 
 
 def view_mutations(accession: Accession):
+    """View the called mutations"""
     args = "bcftools query -f '" + accession.acc + \
            r" %REF%POS%ALT\n' " + accession.my_bcf_file
     return subprocess.run(args, shell=True, capture_output=True, text=True)
 
 
 def dir_is_empty(path: Path) -> bool:
+    """Is the directory empty returns bool"""
     if os.path.exists(path) and not os.path.isfile(path):
         if not os.listdir(path):
             return True
@@ -84,6 +91,7 @@ def glob_re(pattern, strings):
 
 
 def one_or_two_fastq_gz(accession, re_result):
+    """Checks if fastq file is Paired end or Single stranded"""
     current_dir = os.getcwd()
     if len(re_result) == 1:
         print(1)
@@ -110,6 +118,7 @@ def one_or_two_fastq_gz(accession, re_result):
 
 
 def fastq_exists(accession):
+    """Checks if fastq files already exist in the SRA folder if not downloads them"""
     if dir_is_empty(accession) is False:
         filenames = glob_re(r'.*\.f.*(gz)?', os.listdir(accession))
         results = [item for item in filenames]
@@ -144,6 +153,7 @@ def sra_is_paired(sra_file):
 
 
 def bow_tie(accession: Accession):
+    """Aligns fastq files with bowtie2 if paired end reads or bwa if single stranded"""
     if accession.my_fastq_1_file.exists() and accession.my_fastq_2_file.exists():
         args = f"bowtie2 -p 8 -x bowtie -1 {accession.my_fastq_1_file} -2 {accession.my_fastq_2_file} -S {accession.my_sam_file}"
         subprocess.run(args, shell=True)
@@ -155,21 +165,25 @@ def bow_tie(accession: Accession):
 
 
 def sam_tools_view(accession: Accession):
+    """Converts sam file to bam file"""
     args = f"samtools view -@ 8 -bS {accession.my_sam_file} > {accession.my_bam_file}"
     subprocess.run(args, shell=True)
 
 
 def sam_tools_sort(accession: Accession):
+    """Converts bam file to sorted.bam file"""
     args = f"samtools sort -@ 8 {accession.my_bam_file} -o {accession.my_bam_file_sorted}"
     subprocess.run(args, shell=True)
 
 
 def sam_tools_index(accession: Accession):
+    """Creates an index file for sorted.bam file"""
     args = f"samtools index -@ 8 {accession.my_bam_file_sorted}"
     subprocess.run(args, shell=True)
 
 
 def fastq_func(accession: Accession):
+    """Downloads either split fastq files or single stranded"""
     if sra_is_paired(accession.my_sra_file):
         args = f"parallel-fastq-dump --sra-id {accession.my_sra_file} --threads 4 --gzip"
         # args = f"fastq-dump --gzip {accession.my_sra_file}"
@@ -194,6 +208,7 @@ def fastqc_func(accession, fastq_file_1=None, fastq_file_2=None):
 
 
 def fastv_func(accession, fastq_file_1=None, fastq_file_2=None):
+    """Creates a fastv report"""
     if fastq_file_1 is not None and fastq_file_2 is not None:
         if fastq_file_1.exists() and fastq_file_2.exists():
             args = f" fastv --in1 {fastq_file_1} --in2 {fastq_file_2} -g SARS-CoV-2.genomes.fa " \
@@ -206,6 +221,7 @@ def fastv_func(accession, fastq_file_1=None, fastq_file_2=None):
 
 
 def is_positive(json_file):
+    """Checks if an accession is positive for SARS-CoV-2 (JSON file)"""
     with open(json_file, "r") as file:
         data = json.loads(file.read())
         if data["kmer_detection_result"]["result"] == "POSITIVE":
@@ -215,6 +231,7 @@ def is_positive(json_file):
 
 
 def delete_accession(file, accession):
+    """Deletes accession from accession file"""
     with open(file, "r+") as file:
         lines = file.readlines()
         file.seek(0)
@@ -225,6 +242,7 @@ def delete_accession(file, accession):
 
 
 def mean_depth(json_file):
+    """Returns the mean coverage of an accession"""
     with open(json_file, "r") as file:
         data = json.loads(file.read())
         return float(data["kmer_detection_result"]["mean_coverage"])
@@ -241,6 +259,7 @@ def is_full():
 
 
 def read_pileup_write_allele(accession, input_file, output_file):
+    """Reads the mpileup file and writes another file that is human-readable"""
     try:
         with open(input_file, "r") as infile, open(output_file, "w") as outfile:
             for line in infile:
