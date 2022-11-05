@@ -27,6 +27,8 @@ BINARY DEPENDENCIES
 
 bowtie2
 
+bwa
+
 sra-toolkit
 
 samtools
