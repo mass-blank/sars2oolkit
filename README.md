@@ -20,6 +20,8 @@ conda install biopython
 
 conda install bowtie2 
 
+conda install ... 
+
 
 BINARY DEPENDENCIES
 
