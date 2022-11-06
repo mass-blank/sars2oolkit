@@ -30,7 +30,7 @@ conda install ...
 
 1. [x] bowtie2
 2. [x] bwa
-3. [x] sra-toolkit
+3. [x] sra-tools
 4. [x] samtools
 5. [x] bcftools
 6. [x] fastqc
