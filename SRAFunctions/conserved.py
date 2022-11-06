@@ -4,7 +4,7 @@ import numpy as np
 from Bio import SeqIO
 
 # Path to aligned fasta file
-FILE_NAME = Path('../GitHub/sars2oolkit/sarbeco_family_aligned.fasta')
+FILE_NAME = Path('sarbeco_family_aligned.fasta')
 # Threshold for minimum number that each nucleotide position
 # per genome must contain to be accepted as 'ancestral'
 LIMIT = 23

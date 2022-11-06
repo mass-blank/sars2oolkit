@@ -83,7 +83,6 @@ def main():
 
     if args.infile and args.alleles:
         # This block of code relates to the arguments: checksars2.py -i {file} -a
-
         # function from SRAFunctions/conserved.py returns a list of ancestral positions and corresponding allele
         alleles = dict(conserved())
         # A basal mutation that is excluded by conserved.py but is included here as it's been phylogenetically accepted
@@ -242,15 +241,15 @@ if __name__ == "__main__":
                         )
     parser.add_argument("-d", "--download",
                         action="store_true",
-                        help="Downloads accession list and outputs whether SARS2-CoV-2 positive"
+                        help="Downloads accession list and if accession is SARS-CoV-2 positive and depth"
                         )
     parser.add_argument("-c", "--check",
                         action="store_true",
-                        help="Check if the SRA's are Positive or Negative"
+                        help="Check if the SRA's are Positive or Negative and delete accession/files"
                         )
     parser.add_argument("-T", "--depth",
                         type=float, default=100.00,
-                        help="Mean depth for acceptable positive."
+                        help="Mean depth for acceptable positive"
                         )
     parser.add_argument("-b", "--bowtie",
                         action="store_true",
