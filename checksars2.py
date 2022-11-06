@@ -75,7 +75,8 @@ def remove_files(args_file_name: str, accession: Accession):
 
 
 def main():
-    print(functions.progress())
+    start, total = functions.progress()
+    print(f"Accessions {start} out of {total} completed.")
     if args.infile.name is not None:
         my_mutations_text_file = Path(args.infile.name + "_mutations.txt")
     else:
@@ -96,7 +97,7 @@ def main():
         for idx, accession in enumerate(my_acc_file_lines):
             # creates an Accession object which creates Path objects
             acc = Accession(accession)
-            print(f"{str(idx)}/{str(len(my_acc_file_lines))}", acc.acc)
+            print(f"{str(idx)}/{str(len(my_acc_file_lines))} {acc.acc}")
             if acc.my_sam_mpileup_file.exists() is False and acc.my_bam_file_sorted.exists():
                 functions.gen_pileup(acc)
                 functions.read_pileup_write_allele(
@@ -144,8 +145,7 @@ def main():
         lines = set(functions.open_file_return_lines(args.infile.name))
         for idx, accession in enumerate(lines):
             acc = Accession(accession)
-            print(acc.acc)
-            print(f"{idx + 1}/{len(lines)}")
+            print(f"{acc.acc}\t{idx + 1}/{len(lines)}")
             # DOWNLOAD: files, check if positive for SARS-CoV-2
             if args.download:
 
@@ -158,7 +158,7 @@ def main():
 
                 elif acc.my_json_file.exists() and acc.my_fastq_1_file.exists() or \
                         acc.my_fastq_file.exists():
-                    print("JSON and FASTQ files exist")
+                    print(f"{acc.my_json_file}\t{acc.my_fastq_file}\tfiles exist\n")
 
                 elif acc.my_sra_file.exists() and (acc.my_fastq_file.exists() is False or
                                                    acc.my_fastq_1_file.exists() is False):
@@ -166,7 +166,7 @@ def main():
 
                 elif (acc.my_fastq_file.exists() is False or acc.my_fastq_1_file.exists() is False) and \
                         acc.my_bam_file_sorted.exists() is False:
-                    print('fastq_exists function')
+                    print('Processing FASTQ files...\n')
 
                     functions.fastq_exists(acc.acc)
 
