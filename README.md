@@ -16,6 +16,8 @@ conda config --set channel_priority strict
 
 conda create -n bio
 
+conda activate bio
+
 conda install biopython
 
 conda install bowtie2 
