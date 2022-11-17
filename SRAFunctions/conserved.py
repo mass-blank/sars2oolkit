@@ -4,10 +4,10 @@ from Bio import SeqIO
 
 subdir = Path(__file__).parent.resolve()
 # Path to aligned fasta file
-FILE_NAME = Path(subdir,'sarbeco_family_aligned.fasta')
+FILE_NAME = Path(subdir, 'sarbeco_family_aligned.fasta')
 # Threshold for minimum number that each nucleotide position
 # per genome must contain to be accepted as 'ancestral'
-LIMIT = 23
+LIMIT = 25
 REF_GENOME = "NC_045512.2"
 np.seterr(divide='ignore', invalid='ignore')
 
@@ -39,14 +39,15 @@ seqs = {}
 for entry in fasta:
     seqs[entry.id] = entry
 
-def conserved():
+
+def conserved() -> dict:
     position_legend = {'a': 0, 'c': 1, 'g': 2, 't': 3}
     count_a = 0
     count_c = 0
     count_g = 0
     count_t = 0
     nucleotide = 1
-    conserved_list = []
+    conserved_dict = dict()
     # loop through each nucleotide position
     while nucleotide <= len(seqs[REF_GENOME].seq):
         # loop through each nucleotide per genome
@@ -78,11 +79,13 @@ def conserved():
                 # if reference nucleotide does not match conserved position append that position and conserved allele
                 # to a list
                 if check_ref_nucleotide != i:
-                    conserved_list.append(
-                        [int(ungapped_pos(seqs[REF_GENOME].seq, nucleotide)), i])
+                    conserved_dict[int(ungapped_pos(seqs[REF_GENOME].seq, nucleotide))] = i
         # clear counter
         count_a = count_c = count_g = count_t = 0
         # go to next nucleotide position
         nucleotide += 1
 
-    return conserved_list
+    return conserved_dict
+
+
+print(conserved())

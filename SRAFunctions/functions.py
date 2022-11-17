@@ -5,6 +5,7 @@ import shutil
 import subprocess
 import xml.etree.ElementTree as ElTr
 from pathlib import Path
+from typing import Generator
 
 import numpy as np
 
@@ -12,9 +13,14 @@ from SRAClass.SRAClass import Accession
 from SRAFunctions.allelecount import Base_Counter
 
 
+
+
+
 def progress():
     """How many sorted.bam files exist out of total accession"""
-    lines = open_file_return_lines('SRR_List_1.txt')
+    subdir = Path(__file__).parent.resolve()
+    SRR_FILE = Path(subdir,'SRR_List_1.txt')
+    lines = open_file_return_lines(SRR_FILE)
     count = 0
     for line in set(lines):
         accession = Accession(line)
@@ -25,14 +31,19 @@ def progress():
 
 def calculate_noise_return_percentages(row_a: int, row_c: int, row_g: int, row_t: int):
     """Calculate the noise in each row and return percentages(float) without noise"""
+
     nt_array = np.array(
         [row_a, row_c, row_g, row_t])
-    a, b = np.partition(nt_array, 1)[0:2]
-    noise = a + b / 2
-    nt_array = nt_array - noise
-    nt_array = nt_array.clip(min=0)
-    perc_array = nt_array / nt_array.sum(axis=0)
-    return perc_array
+    if nt_array.sum() > 30:
+        a, b = np.partition(nt_array, 1)[0:2]
+        noise = a + b / 2
+        nt_array = nt_array - noise
+        nt_array = nt_array.clip(min=0)
+        perc_array = nt_array / nt_array.sum(axis=0)
+        return perc_array
+    else:
+        nt_array = np.array([0, 0, 0, 0])
+        return nt_array
 
 
 def open_file_return_lines(file: Path) -> list:
@@ -40,6 +51,10 @@ def open_file_return_lines(file: Path) -> list:
         lines = [line.rstrip() for line in f]
     return lines
 
+def open_file_return_generator(file: Path) -> Generator:
+    with open(file, 'r') as f:
+        for line in f:
+            yield line.rstrip()
 
 def xml_parse(accession: str, search: str) -> list:
     """Returns bool for specific search item found in the xml file for an accession from NCBI"""
@@ -155,7 +170,8 @@ def sra_is_paired(sra_file):
 def bow_tie(accession: Accession):
     """Aligns fastq files with bowtie2 if paired end reads or bwa if single stranded"""
     if accession.my_fastq_1_file.exists() and accession.my_fastq_2_file.exists():
-        args = f"bowtie2 -p 8 -x bowtie -1 {accession.my_fastq_1_file} -2 {accession.my_fastq_2_file} -S {accession.my_sam_file}"
+        args = f"bowtie2 -p 8 -x bowtie -1 {accession.my_fastq_1_file} -2 {accession.my_fastq_2_file} " \
+               f"-S {accession.my_sam_file}"
         subprocess.run(args, shell=True)
     elif accession.my_fastq_file.exists():
         args = f"bwa mem -t 8 SARS-CoV-2_reference.fasta {accession.my_fastq_file} > {accession.my_sam_file}"
@@ -220,7 +236,7 @@ def fastv_func(accession, fastq_file_1=None, fastq_file_2=None):
         subprocess.run(args, shell=True)
 
 
-def is_positive(json_file):
+def is_positive(json_file) -> bool:
     """Checks if an accession is positive for SARS-CoV-2 (JSON file)"""
     with open(json_file, "r") as file:
         data = json.loads(file.read())

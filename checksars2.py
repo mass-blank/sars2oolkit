@@ -2,8 +2,10 @@ import argparse
 import os
 import shutil
 import xml.etree.ElementTree as ElTr
+from rich import pretty
 from collections import defaultdict
 from pathlib import Path
+import csv
 
 import pandas as pd
 
@@ -11,19 +13,7 @@ from SRAClass.SRAClass import Accession
 from SRAFunctions import functions
 from SRAFunctions.conserved import conserved
 
-
-class Bcolors:
-    HEADER = "\033[95m"
-    OKBLUE = "\033[94m"
-    OKCYAN = "\033[96m"
-    OKGREEN = "\033[92m"
-    WARNING = "\033[93m"
-    FAIL = "\033[91m"
-    ENDC = "\033[0m"
-    BOLD = "\033[1m"
-    UNDERLINE = "\033[4m"
-
-
+pretty.install()
 def remove_files(args_file_name: str, accession: Accession):
     """This function removes all files associated with each accession,
     as defined in SRAClass.SRAClass"""
@@ -85,15 +75,17 @@ def main():
     if args.infile and args.alleles:
         # This block of code relates to the arguments: checksars2.py -i {file} -a
         # function from SRAFunctions/conserved.py returns a list of ancestral positions and corresponding allele
-        alleles = dict(conserved())
+        # alleles = conserved()
         # A basal mutation that is excluded by conserved.py but is included here as it's been phylogenetically accepted
         # as an important mutation separating 2 lineages: v1 and a1
-        # 3 = t as in [ 'a', 'c', 'g', 't' ]
+        alleles = {}
+        alleles[29095] = 3
         alleles[18060] = 3
+        # 3 = t as in [ 'a', 'c', 'g', 't' ]
         # initialize empty dictionary of list objects
         data = defaultdict(list)
         # creates a set of unique accessions
-        my_acc_file_lines = set(functions.open_file_return_lines(args.infile.name))
+        my_acc_file_lines = set(functions.open_file_return_generator(args.infile.name))
         for idx, accession in enumerate(my_acc_file_lines):
             # creates an Accession object which creates Path objects
             acc = Accession(accession)
@@ -114,7 +106,7 @@ def main():
                                                                                    row_dict[key]['t'])
                         data[acc.acc].append(percentages[alleles[key]])
                     except KeyError as ex:
-                        print(f"Key doesn't exist {ex}: position {key}")
+                        print(f"Key {ex} doesn't exist")
 
             elif acc.my_sam_mpileup_file.exists() and acc.my_alleles_text_file.exists() is False:
                 # THIS WRITES THE RANGE TO FILE
@@ -134,15 +126,31 @@ def main():
                                                                                    row_dict[key]['t'])
                         data[acc.acc].append(percentages[alleles[key]])
                     except KeyError as ex:
-                        print(f"Value {ex} doesn't exist at position {key}")
+                        print(f"Key {ex} doesn't exist.")
         df = pd.DataFrame.from_dict(data, orient="index")
         df = df.sum(axis=1)
         df = df.sort_values(axis=0)
         with pd.option_context('display.max_rows', None, 'display.max_columns', None):
             print(df)
+        if args.top:
+            df = df.sort_values(axis=0, ascending=False).head(args.number)
+            with open('output.csv', 'w', newline='') as csv_file:
+                csv_write = csv.writer(csv_file)
+
+                for accession in df.index:
+                    acc = Accession(accession)
+                    my_lines = functions.open_file_return_lines(acc.my_alleles_text_file)
+                    # print(f"Nucl\tA\tC\tG\tT\t{acc.acc}")
+                    csv_write.writerow(['Nucleotide','A','C','G','T', acc.acc])
+                    for line in my_lines:
+                        line = line.split('\t')
+                        if int(line[1]) in [8782, 17747, 17858, 18060, 28144, 29095]:
+                            #print(f"{line[1]}\t{line[2]}\t{line[3]}\t{line[4]}\t{line[5]}")
+                            csv_write.writerow([line[1], line[2], line[3], line[4], line[5]])
+                            continue
 
     if args.infile and not args.alleles:
-        lines = set(functions.open_file_return_lines(args.infile.name))
+        lines = set(functions.open_file_return_generator(args.infile.name))
         for idx, accession in enumerate(lines):
             acc = Accession(accession)
             print(f"{acc.acc}\t{idx + 1}/{len(lines)}")
@@ -213,11 +221,11 @@ def main():
             elif args.delete:
                 try:
                     result = functions.xml_parse(acc.acc, 'Platform')[0]
-                except ElTr.ParseError as ex:
-                    print(ex)
-                finally:
                     if result == 'OXFORD_NANOPORE':
                         remove_files(args.infile.name, acc)
+                except ElTr.ParseError as ex:
+                    print(ex)
+
 
             # CHECK IF SRA IS POSITIVE OR NEGATIVE
             elif args.check:
@@ -263,6 +271,10 @@ if __name__ == "__main__":
                         action="store_true",
                         help="This function generates alleles for conserved positions"
                         )
+    parser.add_argument("--top",
+                        action="store_true")
+    parser.add_argument("--number",
+                        type=int, default=20)
     parser.add_argument("-D", "--delete",
                         action="store_true"
                         )
