@@ -81,6 +81,8 @@ def main():
         alleles = {}
         alleles[29095] = 3
         alleles[18060] = 3
+        alleles[8782] = 3
+        alleles[28144] = 1
         # 3 = t as in [ 'a', 'c', 'g', 't' ]
         # initialize empty dictionary of list objects
         data = defaultdict(list)
@@ -141,7 +143,7 @@ def main():
                     acc = Accession(accession)
                     my_lines = functions.open_file_return_lines(acc.my_alleles_text_file)
                     # print(f"Nucl\tA\tC\tG\tT\t{acc.acc}")
-                    csv_write.writerow(['Nucleotide','A','C','G','T', acc.acc])
+                    csv_write.writerow([acc.acc,'A','C','G','T'])
                     for line in my_lines:
                         line = line.split('\t')
                         if int(line[1]) in [8782, 17747, 17858, 18060, 28144, 29095]:
@@ -274,7 +276,7 @@ if __name__ == "__main__":
     parser.add_argument("--top",
                         action="store_true")
     parser.add_argument("--number",
-                        type=int, default=20)
+                        type=int, default=30)
     parser.add_argument("-D", "--delete",
                         action="store_true"
                         )
