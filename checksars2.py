@@ -75,14 +75,10 @@ def main():
     if args.infile and args.alleles:
         # This block of code relates to the arguments: checksars2.py -i {file} -a
         # function from SRAFunctions/conserved.py returns a list of ancestral positions and corresponding allele
-        # alleles = conserved()
+        alleles = conserved()
         # A basal mutation that is excluded by conserved.py but is included here as it's been phylogenetically accepted
         # as an important mutation separating 2 lineages: v1 and a1
-        alleles = {}
-        alleles[29095] = 3
         alleles[18060] = 3
-        alleles[8782] = 3
-        alleles[28144] = 1
         # 3 = t as in [ 'a', 'c', 'g', 't' ]
         # initialize empty dictionary of list objects
         data = defaultdict(list)
