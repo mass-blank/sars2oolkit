@@ -154,3 +154,15 @@ def calculate_noise_return_percentages(row_a: int, row_c: int, row_g: int, row_t
 
 I then rank each SRR based on the 'oldest' score the amount of ancestral mutations that it has 
 and it spits out the result in this format.
+
+SRR12188713    3.004770
+SRR11578196    3.006149
+SRR12188594    3.006326
+SRR11780110    3.007238
+SRR11772061    3.007291
+SRR11278165    3.008043
+SRR11772059    3.020389
+SRR11278166    3.020863
+SRR11939970    3.133451
+SRR11939965    3.262047
+SRR12188657    3.666804
